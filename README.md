@@ -286,6 +286,12 @@ Gate passes, and the task executes directly with a compact receipt — no
 packets, no subagents. Governance scales down to a single line of context
 instead of adding ceremony to every task.
 
+## Upgrading
+
+See [UPGRADING.md](UPGRADING.md) for the three-class migration procedure
+(overwrite / merge / keep), the migration path for legacy-format knowledge
+snapshots, and the optional `git subtree` sync.
+
 ## How It Compares
 
 | | This skill | Subagent packs (e.g. awesome-claude-code-subagents) | Orchestration frameworks (e.g. maestro) | Methodology kits (e.g. BMAD) |

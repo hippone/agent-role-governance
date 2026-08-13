@@ -45,8 +45,8 @@ context_contract: references/role-catalog.md
 
 ## Recent Deltas
 
+- 2026-08-13: `UPGRADING.md` documents the three-class migration procedure (overwrite mechanism / merge host-context / keep host data), legacy-format snapshot migration path, and the optional `git subtree` sync; README links it.
 - 2026-08-13: `check-doc-sync.sh` snapshot-initialization check now accepts legacy-format `Recent Deltas` (real content without date prefixes) alongside the dated format; blank placeholders still block. This is the documented migration path for host projects with pre-existing snapshots.
 - 2026-08-13: matcher adds `readme` to the docs-only word list (`update the README only` -> `docs-governor`, 42 self-test cases); bare "update README" without an only/仅/只 qualifier still routes to the coordinator conservatively.
 - 2026-08-13: matcher gains a protected-domain noun fallback (verb-gap requests like "refactor the auth ..." now coordinate), broader bilingual verb/surface vocabulary (41 self-test cases); doctor verifies git-hook activation via `rev-parse --git-path hooks` and flags inert `.githooks` with the fix command; commit-msg hook searches vendored install paths; README documents `core.hooksPath` activation. Work uncommitted at capture time; baseline is the prior commit.
-- 2026-08-13: doctor.sh and check-doc-sync.sh compare repository paths case-insensitively (macOS `openSource` vs `opensource`); self-bootstrap install is now detected as `in-repository`. Commit-msg hook (`.githooks/`, `core.hooksPath`) plus Claude Code PreToolUse gate wired; doctor.sh is rg-free (grep) and detects hooks even when probe dirs are missing.
-- 2026-08-13: repository self-wiring, structured matcher input, strict ledger validation, installation doctor, and CI fixtures added; no production verification claimed.
+- 2026-08-13: repository self-wiring (doc-ownership, doctor, CI fixtures, structured matcher, strict ledger), case-insensitive path comparison for macOS (`openSource` vs `opensource`), commit-msg hook + Claude Code PreToolUse gate, rg-free doctor with hook-activation verification; no production verification claimed.
