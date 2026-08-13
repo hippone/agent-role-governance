@@ -131,9 +131,123 @@ installations skip the gate silently.
    a PreToolUse hook for `git commit` in your agent of choice. The checker
    reads the hook's JSON input on stdin and only acts on commit commands.
 
-## How It Compares
+## Walkthrough: One Task End To End
 
-| | This skill | Subagent packs (e.g. awesome-claude-code-subagents) | Orchestration frameworks (e.g. maestro) | Methodology kits (e.g. BMAD) |
+A payment-flow feature lands in a project wired up as described above. This
+is what the governance layer actually does at each step.
+
+### 1. The request arrives
+
+> "Add webhook handling for refunds and show the refund receipt on the
+> account page."
+
+### 2. The role matcher identifies the routing role
+
+```bash
+echo "add webhook handling for refunds and show the refund receipt" \
+  | bash skills/project-rules/scripts/select-role.sh
+```
+
+```json
+{
+  "role": "contract-coordinator",
+  "tier": "T1",
+  "confidence": "high",
+  "reason": "auth/billing/privacy/identity signal",
+  "candidates": [
+    {"tier": "T1", "role": "contract-coordinator", "confidence": "high", "signal": "auth/billing/privacy/identity signal"}
+  ]
+}
+```
+
+`contract-coordinator` L2 wins because the T1 hard signal (billing) beats the
+frontend-looking phrasing — a small diff in one file would not have changed
+this, which is the point of the gate.
+
+### 3. The L2 coordinator decomposes into bounded L1 packets
+
+```
+Task Packet: PKT-01  Role: contract-architect  Mode: subagent (run a1b2c3)
+  Context: C0 + C2 contract slices
+  Output: refund webhook contract, migration boundary
+Task Packet: PKT-02  Role: backend-engineer     Mode: subagent (run d4e5f6)
+  Context: C1 behavior + C2 contract + C3 implementation
+  Output: webhook handler, idempotency, tests
+Task Packet: PKT-03  Role: frontend-engineer    Mode: subagent (run g7h8i9)
+  Context: C1 + frontend C3
+  Output: receipt UI consuming the new state
+Task Packet: PKT-04  Role: quality-engineer     Mode: subagent, after PKT-02/03
+  Context: diff + test evidence
+  Output: GO/NO-GO on the integrated change set
+```
+
+Each packet records its delegation receipt, risk route, and fork strategy.
+PKT-04 is the mandatory independent review — the mutation owners cannot
+self-certify.
+
+### 4. Roles self-maintain their knowledge
+
+Before working, `backend-engineer` runs its self-audit (did anything it
+depends on change since `captured_on`?). After implementing, it updates its
+own snapshot:
+
+```diff
+## Recent Deltas
++- 2026-08-13: refund webhook v1 lands; idempotency keyed on event id;
++  no refund auto-approval without explicit operator action.
+```
+
+### 5. The deterministic gate catches the half-done commit
+
+The coordinator tries to commit code + backend snapshot, but the frontend
+snapshot is missing:
+
+```bash
+$ bash skills/project-rules/scripts/check-doc-sync.sh --dirty
+doc-sync: 1 violation(s), 0 warning(s)
+VIOLATION web-app: code changed (src/pages/account.tsx) but none of its
+eligible role knowledge snapshots touched -> update one of:
+skills/project-rules/knowledge/frontend-engineer.md
+```
+
+The commit is blocked until the frontend snapshot moves. No reviewer needed
+for this kind of drift — the gate is structural.
+
+### 6. Quality evidence is recorded, not claimed
+
+After reconciliation, the coordinator appends the receipt:
+
+```bash
+echo '{"id":"T-104","routing":{"role":"contract-coordinator","tier":"T1",
+  "verified":true},"qa":{"status":"GO","issues":0,"review":"subagent run k1l2m3"}}' \
+  | bash skills/project-rules/scripts/quality-ledger.sh --add
+```
+
+Two weeks later, the monthly summary says what the process produced:
+
+```bash
+$ bash skills/project-rules/scripts/quality-ledger.sh --summary
+quality-ledger: 24 entries
+  QA: GO=20 NO-GO=2 PARTIAL=2
+  GO rate: 83.3%
+  issues: 7 across 4 entries
+  route verified: 18/24 (75.0%)
+  roles: contract-coordinator=6, frontend-engineer=5, change-coordinator=4, ...
+```
+
+A repeated NO-GO on the same role would now be visible and fixable — the
+loop is closed.
+
+### 7. The smaller L1 path, for contrast
+
+> "Fix the typo on the settings page and add a component test."
+
+The matcher returns `frontend-engineer` (T2, no hard signal), the L1 Direct
+Gate passes, and the task executes directly with a compact receipt — no
+packets, no subagents. Governance scales down to a single line of context
+instead of adding ceremony to every task.
+
+## How It Compares| | This skill | Subagent packs (e.g. awesome-claude-code-subagents) | Orchestration frameworks (e.g. maestro) | Methodology kits (e.g. BMAD) |
 |---|---|---|---|---|
 | Role definitions | Yes, with decision scope | Persona prompts only | Implicit | Yes, fixed SDLC phases |
 | Direct-vs-coordinate gate | Deterministic checklist | No | No | Workflow-size heuristics |

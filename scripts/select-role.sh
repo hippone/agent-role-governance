@@ -75,7 +75,7 @@ if has(r"data loss", r"data-loss", r"data.{0,20}lost", r"production incident", r
     signals.append(("T1", "incident-coordinator", "high", "production or unstable-root-cause signal"))
 if has(r"public api", r"api schema", r"shared type", r"state machine", r"\bdtos?\b", r"contract", r"\bschema\b") and not has(r"no consumers", r"design[- ]only"):
     signals.append(("T1", "contract-coordinator", "high", "public/shared contract signal"))
-if has(r"authentication|authorization|\bauth\b|billing|payment|privacy|identity|entitlement"):
+if has(r"authentication|authorization|\bauth\b|billing|payment|refund|privacy|identity|entitlement"):
     signals.append(("T1", "contract-coordinator", "high", "auth/billing/privacy/identity signal"))
 if has(r"ambiguous", r"second surface", r"multi[- ]surface", r"cross[- ]surface", r"multiple roles", r"multi[- ]role"):
     signals.append(("T1", "change-coordinator", "high", "ambiguity or cross-surface signal"))
