@@ -1,0 +1,104 @@
+# Doc ownership manifest — the static constraint layer for doc/code sync.
+#
+# Copy this file next to the skill as `doc-ownership.yaml` and adapt it to
+# your project. Each owner entry declares which code it owns (`code` globs),
+# which docs must move when that code's behavior changes (`docs`), and which
+# functional role knowledge snapshots are eligible to record the durable
+# implementation delta (`knowledge_roles`). Ownership and impact edges are
+# data, enforced by `scripts/check-doc-sync.sh`, not remembered by anyone.
+#
+# Enforcement points:
+#   - `scripts/check-doc-sync.sh --dirty` before closing a task.
+#   - `git commit` PreToolUse hook (tool-specific): staged code matching an
+#     owner with none of its docs or eligible role knowledge touched in the
+#     index blocks the commit. `[docs-na]` waives only the owned-doc check;
+#     `[knowledge-na]` is accepted only with `[docs-na]` for one feature owner.
+#
+# Semantics:
+#   - `docs` is satisfied when ANY listed doc is touched in the same change set.
+#     Keep lists tight; adding files weakens the constraint.
+#   - `knowledge_roles` is an eligible-role set, not an all-roles checklist. One
+#     matching `knowledge/<role-id>.md` must move for every triggered owner.
+#   - `docs_required: false` disables the owned-doc check for an owner. It does
+#     not disable the knowledge-snapshot requirement; only the controlled
+#     single-feature `[knowledge-na]` lane can do that.
+#   - `kind: feature` owners also feed the mixed-surface warning: do not mix
+#     surfaces in one patch.
+#   - `kind: infra` owners additionally emit a review note for `dependents`
+#     ("all" = every feature surface) — the human decides follow-up, agents do
+#     not negotiate.
+#   - Glob forms: exact path, `dir/**` prefix, or fnmatch pattern (`*` may cross `/`).
+#   - Every role in `references/role-catalog.md` must appear in at least one
+#     owner's `knowledge_roles`.
+#
+# Unowned-code checks: `unowned_code_roots` (top level) lists roots where
+# unowned non-test changes block. Omit or empty to disable. The optional
+# `references/system-map.md` registers new pages/contexts/modules; the checker
+# skips those checks when the file does not exist.
+
+unowned_code_roots:
+  - src/
+  - backend/src/
+
+owners:
+  # --- Product feature surfaces ---
+  - id: web-app
+    kind: feature
+    label: Main web application
+    knowledge_roles:
+      - product-analyst
+      - experience-designer
+      - frontend-engineer
+      - quality-engineer
+    code:
+      - src/pages/**
+      - src/components/**
+    docs:
+      - docs/architecture.md
+
+  # --- Shared contracts ---
+  - id: public-api
+    kind: contract
+    label: Public API and shared types
+    knowledge_roles:
+      - contract-architect
+      - backend-engineer
+      - contract-coordinator
+      - quality-engineer
+    code:
+      - backend/src/api/**
+      - backend/src/types/**
+    docs:
+      - docs/api-contract.md
+
+  # --- Infrastructure ---
+  - id: build-system
+    kind: infra
+    label: Build, CI, and tooling
+    knowledge_roles:
+      - release-engineer
+      - incident-coordinator
+      - quality-engineer
+    code:
+      - package.json
+      - .github/**
+    docs:
+      - docs/ops.md
+    dependents: all
+
+  # --- Governance ---
+  - id: governance
+    kind: governance
+    label: Skill rules, routing, and documentation
+    docs_required: false
+    knowledge_roles:
+      - docs-governor
+      - change-coordinator
+    code:
+      - SKILL.md
+      - doc-ownership.yaml
+      - rules/**
+      - workflows/**
+      - references/**
+      - scripts/**
+      - README.md
