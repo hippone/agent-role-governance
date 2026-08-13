@@ -454,7 +454,22 @@ def snapshot_is_initialized(path):
     if any(placeholder in text for placeholder in placeholders):
         return False
     recent = re.search(r"(?ms)^## Recent Deltas\s*\n(.*?)(?=^## |\Z)", text)
-    return bool(recent and re.search(r"(?m)^\s*-\s+\d{4}-\d{2}-\d{2}:", recent.group(1)))
+    if not recent:
+        return False
+    deltas = [
+        line for line in recent.group(1).splitlines()
+        if re.match(r"^\s*-\s+\S", line)
+    ]
+    if not deltas:
+        return False
+    # A dated delta is the recommended format; a non-empty, non-placeholder
+    # delta list (legacy format) still proves the snapshot was initialized.
+    return any(
+        re.match(r"^\s*-\s+\d{4}-\d{2}-\d{2}:", line) for line in deltas
+    ) or all(
+        "_None yet._" not in line and "No captured facts yet" not in line
+        for line in deltas
+    )
 
 all_owner_roles = set()
 for owner in owners:
