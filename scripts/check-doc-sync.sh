@@ -16,8 +16,33 @@ set -euo pipefail
 MODE="${1:---dirty}"
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 if [ -z "$ROOT" ]; then
+  echo "doc-sync: skipped (not inside a git repository)"
   exit 0
 fi
+ROOT="$(cd "$ROOT" && pwd -P)"
+
+DOC_SYNC_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+DOC_SYNC_SKILL_DIR="$(cd "$DOC_SYNC_SCRIPT_DIR/.." && pwd -P)"
+if [ -n "${ROLE_GOVERNANCE_DIR:-}" ]; then
+  DOC_SYNC_BASE_DIR="${ROLE_GOVERNANCE_DIR%/}"
+  case "$DOC_SYNC_BASE_DIR" in
+    "$ROOT") DOC_SYNC_BASE_DIR="." ;;
+    "$ROOT"/*) DOC_SYNC_BASE_DIR="${DOC_SYNC_BASE_DIR#"$ROOT"/}" ;;
+    /*)
+      echo "doc-sync: 1 violation(s), 0 warning(s)"
+      echo "VIOLATION CONFIG: ROLE_GOVERNANCE_DIR must be inside repository: $ROOT"
+      exit 1
+      ;;
+  esac
+elif [ "$DOC_SYNC_SKILL_DIR" = "$ROOT" ]; then
+  DOC_SYNC_BASE_DIR="."
+elif [[ "$DOC_SYNC_SKILL_DIR" == "$ROOT"/* ]]; then
+  DOC_SYNC_BASE_DIR="${DOC_SYNC_SKILL_DIR#"$ROOT"/}"
+else
+  echo "doc-sync: skipped (global skill is outside repository; copy it into the project and add doc-ownership.yaml)"
+  exit 0
+fi
+export ROLE_GOVERNANCE_DIR="$DOC_SYNC_BASE_DIR"
 
 run_python() {
   python3 - "$ROOT" "$1" "${DOC_SYNC_DOCS_NA:-0}" "${DOC_SYNC_KNOWLEDGE_NA:-0}" <<'PY'
@@ -49,10 +74,11 @@ if mode == "hook":
 
 config_from_index = mode == "staged"
 base_dir = os.environ.get("ROLE_GOVERNANCE_DIR", "skills/project-rules").rstrip("/")
-manifest_path = base_dir + "/doc-ownership.yaml"
-catalog_path = base_dir + "/references/role-catalog.md"
-system_map_path = base_dir + "/references/system-map.md"
-knowledge_prefix = base_dir + "/knowledge/"
+base_prefix = "" if base_dir in {"", "."} else base_dir + "/"
+manifest_path = base_prefix + "doc-ownership.yaml"
+catalog_path = base_prefix + "references/role-catalog.md"
+system_map_path = base_prefix + "references/system-map.md"
+knowledge_prefix = base_prefix + "knowledge/"
 
 
 class GateError(RuntimeError):
@@ -371,6 +397,8 @@ if not catalog_roles:
 
 knowledge_paths = configuration_paths(knowledge_prefix)
 knowledge_roles = {PurePosixPath(path).stem for path in knowledge_paths}
+snapshot_metadata = {}
+snapshot_texts = {}
 for role in sorted(catalog_roles - knowledge_roles):
     violations.append(
         f"CONFIG: catalog role has no knowledge snapshot: "
@@ -383,7 +411,10 @@ for role in sorted(knowledge_roles - catalog_roles):
     )
 for path in sorted(knowledge_paths):
     try:
-        fields = parse_snapshot(path, read_configuration(path))
+        snapshot_text = read_configuration(path)
+        fields = parse_snapshot(path, snapshot_text)
+        snapshot_metadata[path] = fields
+        snapshot_texts[path] = snapshot_text or ""
     except GateError as exc:
         violations.append(f"CONFIG: {exc}")
         continue
@@ -401,6 +432,26 @@ for path in sorted(knowledge_paths):
             f"CONFIG: knowledge snapshot tier mismatch: {path} "
             f"declares {declared_tier}, catalog requires {expected_tier}"
         )
+
+
+def snapshot_is_initialized(path):
+    fields = snapshot_metadata.get(path, {})
+    text = snapshot_texts.get(path, "")
+    if fields.get("captured_on") in {None, "", "pending"}:
+        return False
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", fields.get("captured_on", "")):
+        return False
+    if fields.get("repository_baseline") in {None, "", "pending"}:
+        return False
+    placeholders = (
+        "No captured facts yet",
+        "_None yet._",
+        "Add compact, current facts",
+    )
+    if any(placeholder in text for placeholder in placeholders):
+        return False
+    recent = re.search(r"(?ms)^## Recent Deltas\s*\n(.*?)(?=^## |\Z)", text)
+    return bool(recent and re.search(r"(?m)^\s*-\s+\d{4}-\d{2}-\d{2}:", recent.group(1)))
 
 all_owner_roles = set()
 for owner in owners:
@@ -524,11 +575,22 @@ for owner_set, candidate_paths in (
             for role in owner.get("knowledge_roles", [])
             if role in catalog_roles
         ]
-        knowledge_satisfied = any(
-            changed_post_image_exists(path) for path in eligible_snapshots
-        )
+        changed_snapshots = [
+            path for path in eligible_snapshots if changed_post_image_exists(path)
+        ]
+        initialized_snapshots = [
+            path for path in changed_snapshots if snapshot_is_initialized(path)
+        ]
+        knowledge_satisfied = bool(initialized_snapshots)
         if eligible_snapshots and not knowledge_satisfied:
-            if knowledge_na and docs_na and owner.get("kind") == "feature":
+            if changed_snapshots:
+                violations.append(
+                    f"{owner['id']}: touched knowledge snapshot is still a "
+                    "placeholder or lacks captured_on, repository_baseline, "
+                    "source facts, and a dated Recent Delta: "
+                    + ", ".join(changed_snapshots)
+                )
+            elif knowledge_na and docs_na and owner.get("kind") == "feature":
                 waived_knowledge_owners.append(owner["id"])
             else:
                 violations.append(

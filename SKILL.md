@@ -26,8 +26,9 @@ Every non-trivial task:
 
 1. Run `workflows/requirement-triage.md` first. Build the request envelope,
    resolve owners, and apply the L1 Direct Gate. Use
-   `references/role-matcher.md` (or `scripts/select-role.sh`) to identify the
-   routing role automatically instead of guessing.
+   `references/role-matcher.md` and `scripts/select-role.sh --envelope` to
+   identify the routing role from structured request facts. Text mode is only
+   a compatibility candidate generator.
 2. Read `rules/role-boundaries.md` for gates, authority, context depth, and
    risk routing. Read `references/role-catalog.md` to select a role and its
    routine context limit.
@@ -54,12 +55,15 @@ Every non-trivial task:
 | `workflows/role-self-maintenance.md` | Roles self-audit / self-fetch / self-update their knowledge snapshots |
 | `workflows/quality-ledger.md` | Append-only quality receipts: independent QA GO/NO-GO, routing verification |
 | `workflows/update-role-knowledge.md` | Refresh `knowledge/<role-id>.md` snapshots when code/contracts/evidence change |
-| `knowledge/*.md` | Derived per-role knowledge snapshots (templates ship empty) |
+| `knowledge/*.md` | Derived per-role knowledge snapshots; host projects replace upstream/template facts with their own canonical pointers before marking current |
 | `scripts/check-doc-sync.sh` | Deterministic commit gate over `doc-ownership.yaml` |
 | `scripts/select-role.sh` | Executable role matcher with a self-test table |
 | `scripts/role-snapshot-audit.sh` | Finds snapshots whose owners' code moved without an update |
 | `scripts/quality-ledger.sh` | Aggregates the quality ledger into GO rate, issue counts, route-verify rate |
 | `scripts/check-external-facts.sh` | Flags external-fact markers older than 180 days (model knowledge freshness) |
+| `scripts/doctor.sh` | Reports install mode, manifest, catalog/knowledge, ledger, and detectable hook wiring |
+| `tests/` | Matcher and ledger regression tests plus doc-sync integration fixture |
+| `doc-ownership.yaml` | Self-governance manifest for this skill repository; not a host-project template |
 | `templates/doc-ownership.example.yaml` | Example ownership manifest: code globs, owned docs, eligible knowledge roles |
 
 ## Rule Priority

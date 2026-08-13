@@ -3,19 +3,39 @@
 Deterministic role selection from the request envelope, so role dispatch does
 not depend on the main agent's memory of `references/role-catalog.md`. It is a
 protocol first and an optional script second: the three tiers below define the
-decision procedure; `scripts/select-role.sh` executes the same rules against a
-request text for agents that support scripted routing.
+decision procedure. `scripts/select-role.sh --envelope` executes the rules from
+a structured JSON request envelope. Plain-text mode remains a compatibility
+candidate generator and marks L1 results `needs_envelope_recheck`; it must not
+be treated as final authorization or scope proof.
 
 ## Inputs
 
-Only signals that are already in the request envelope (see
-`workflows/requirement-triage.md` step 1):
+Envelope mode accepts a JSON object with signals already resolved during
+`workflows/requirement-triage.md` step 1:
 
 - request type: `new_requirement | behavior_change | bug | contract | docs | release`
 - affected surface and static owner (`id | not_applicable | unmapped`)
 - contract / auth / billing / privacy impact
 - ambiguity, root-cause stability, production exposure
 - scope width (how many functional roles the work would need)
+
+Canonical fields are `request_type`, `goal` or `text`, `owner_status`,
+`scope_width`, `functional_roles`, `ambiguous`, `contract_impact`,
+`auth_impact`, `billing_impact`, `privacy_impact`, `identity_impact`,
+`schema_impact`, `shared_state_impact`, `production_exposure`,
+`data_loss_risk`, `root_cause_unknown`, `docs_only`, `diagnosis_only`,
+`design_only`, and `release_authorized`. Boolean impact fields express actual
+semantic impact, not mere keyword presence.
+
+```bash
+printf '%s\n' '{
+  "request_type": "behavior_change",
+  "goal": "show refund state on account page",
+  "billing_impact": true,
+  "scope_width": 2,
+  "functional_roles": ["backend-engineer", "frontend-engineer"]
+}' | bash scripts/select-role.sh --envelope
+```
 
 ## Matching Tiers
 
@@ -77,12 +97,13 @@ Every dispatch records:
 - L1 Gate: pass | fail -> promoted to <L2 role>
 ```
 
-Script mode (`scripts/select-role.sh`) emits the same fields as JSON with all
-candidate matches and their confidence, so a coordinator can reconcile
-instead of trusting one hardcoded answer.
+Both script modes emit these fields as JSON. Envelope mode can return a final
+`pass` or promotion result. Text mode includes candidates but reports
+`needs_envelope_recheck` for an apparent L1 route, so a coordinator cannot
+mistake keyword matching for a completed L1 Direct Gate.
 
 ## Self-Test
 
-`bash scripts/select-role.sh --self-test` runs a fixed table of request texts
-against expected roles and fails loudly on any mismatch. Run it after editing
-the matching rules.
+`bash scripts/select-role.sh --self-test` runs English, Chinese, negation,
+multi-candidate, protected-domain, release-authorization, and structured
+envelope cases against expected roles. Run it after editing matching rules.

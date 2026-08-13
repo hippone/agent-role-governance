@@ -1,0 +1,1 @@
+{"date": "2026-08-13", "id": "ARG-2026-08-13-hardening", "qa": {"issues": 8, "review": "main-agent regression checks completed; independent quality-engineer not run because current session policy did not authorize subagent delegation", "review_verified": false, "severity": "high", "status": "PARTIAL"}, "routing": {"role": "change-coordinator", "tier": "T1"}}

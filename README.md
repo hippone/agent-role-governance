@@ -17,8 +17,9 @@ and how durable per-role knowledge stays in sync with code changes.
   explicit, recorded degradation, never silent "delegation".
 - **Automatic role identification.** `references/role-matcher.md` defines a
   three-tier matching protocol (hard signals -> request shape -> gate
-  recheck); `scripts/select-role.sh` executes it with confidence scores and a
-  self-test table. Roles are matched, not guessed.
+  recheck); `scripts/select-role.sh --envelope` executes it from structured
+  request facts. Plain-text mode only generates candidates and cannot silently
+  certify the L1 gate.
 - **Self-maintaining role knowledge.** Each role follows
   `workflows/role-self-maintenance.md`: it audits its snapshot before work,
   fetches what it needs from canonical sources during work, and updates its
@@ -65,12 +66,18 @@ workflows/role-self-maintenance.md
 workflows/quality-ledger.md     append-only quality receipts and how to read them
 workflows/update-role-knowledge.md
                                 manual snapshot refresh (legacy lane)
-knowledge/*.md                  11 role snapshot templates (ship empty)
+knowledge/*.md                  11 role snapshots; host roles start as stale
+                                templates, while this source repo initializes
+                                docs-governor for its own self-governance
 scripts/check-doc-sync.sh       deterministic doc/knowledge sync gate
 scripts/select-role.sh          executable role matcher with self-test
 scripts/role-snapshot-audit.sh  expired-snapshot sweep
 scripts/quality-ledger.sh       aggregates GO rate, issues, route-verify rate
 scripts/check-external-facts.sh flags stale external-fact markers (180 days)
+scripts/doctor.sh               reports whether manifest, install mode, ledger,
+                                and host hook hints are actually wired
+tests/                          matcher, ledger, and doc-sync integration checks
+doc-ownership.yaml              self-governance map for this repository
 templates/doc-ownership.example.yaml
                                 example ownership manifest; copy and adapt
 ```
@@ -103,17 +110,22 @@ git clone https://github.com/hippone/agent-role-governance ~/.codex/skills/role-
 
 ## Wire Up A Project
 
-The role prompts and packet rules work from any install location (including
-global skill dirs). The **doc-sync commit gate only works when the skill lives
-inside your project repository**, because it inspects git change sets — global
-installations skip the gate silently.
+The role prompts and packet rules work from any install location. The
+**doc-sync commit gate only works when the skill lives inside the project
+repository**, because its manifest and snapshots must participate in the same
+Git change set. A global-only invocation now reports that it is unwired and
+exits without pretending the gate ran; a repository-local invocation with a
+missing manifest fails loudly.
 
 1. Copy `templates/doc-ownership.example.yaml` into the skill directory inside
    your repo as `doc-ownership.yaml`, and adapt owners, code globs, docs, and
    `knowledge_roles` to your repo. Code globs are repository-root-relative;
-   the example's `skills/project-rules/...` governance globs match the default
+   the example's `skills/role-governance/...` governance globs match its sample
    install location — adjust the prefix if you install elsewhere. Every catalog
    role must appear in at least one owner.
+   Reset or replace every upstream snapshot with host-project facts before
+   marking it current; the source repository's `docs-governor` snapshot
+   describes this skill repository and is not evidence about the host project.
 2. Optional: add `references/system-map.md` and a `system_map_checks` section
    in `doc-ownership.yaml` to require registering new files/modules (see the
    template header for the schema). The checker skips these checks entirely
@@ -121,10 +133,11 @@ installations skip the gate silently.
 3. Run from the repository root:
 
    ```bash
-   bash skills/project-rules/scripts/check-doc-sync.sh --dirty
+   bash skills/role-governance/scripts/check-doc-sync.sh --dirty
    ```
 
-   If the skill is installed elsewhere, point the checker at it:
+   The checker auto-detects its repository-relative install directory. Use
+   `ROLE_GOVERNANCE_DIR` only for unusual wrappers, and keep it inside the repo:
 
    ```bash
    ROLE_GOVERNANCE_DIR=.agents/skills/role-governance \
@@ -134,6 +147,11 @@ installations skip the gate silently.
 4. Optional commit hook: register `scripts/check-doc-sync.sh --hook-commit` as
    a PreToolUse hook for `git commit` in your agent of choice. The checker
    reads the hook's JSON input on stdin and only acts on commit commands.
+5. Verify the wiring before relying on it:
+
+   ```bash
+   bash skills/role-governance/scripts/doctor.sh --strict
+   ```
 
 ## Walkthrough: One Task End To End
 
@@ -148,19 +166,19 @@ is what the governance layer actually does at each step.
 ### 2. The role matcher identifies the routing role
 
 ```bash
-echo "add webhook handling for refunds and show the refund receipt" \
-  | bash skills/project-rules/scripts/select-role.sh
+printf '%s\n' '{"request_type":"behavior_change","goal":"add webhook handling for refunds and show the refund receipt","billing_impact":true,"scope_width":2,"functional_roles":["backend-engineer","frontend-engineer"]}' \
+  | bash skills/role-governance/scripts/select-role.sh --envelope
 ```
 
 ```json
 {
   "role": "contract-coordinator",
   "tier": "T1",
+  "signal": "public/shared contract or protected-domain change",
   "confidence": "high",
-  "reason": "auth/billing/privacy/identity signal",
-  "candidates": [
-    {"tier": "T1", "role": "contract-coordinator", "confidence": "high", "signal": "auth/billing/privacy/identity signal"}
-  ]
+  "reason": "public/shared contract or protected-domain change",
+  "l1_gate": "fail -> promoted to contract-coordinator",
+  "input_mode": "envelope"
 }
 ```
 
@@ -207,11 +225,11 @@ The coordinator tries to commit code + backend snapshot, but the frontend
 snapshot is missing:
 
 ```bash
-$ bash skills/project-rules/scripts/check-doc-sync.sh --dirty
+$ bash skills/role-governance/scripts/check-doc-sync.sh --dirty
 doc-sync: 1 violation(s), 0 warning(s)
 VIOLATION web-app: code changed (src/pages/account.tsx) but none of its
 eligible role knowledge snapshots touched -> update one of:
-skills/project-rules/knowledge/frontend-engineer.md
+skills/role-governance/knowledge/frontend-engineer.md
 ```
 
 The commit is blocked until the frontend snapshot moves. No reviewer needed
@@ -224,13 +242,13 @@ After reconciliation, the coordinator appends the receipt:
 ```bash
 echo '{"id":"T-104","routing":{"role":"contract-coordinator","tier":"T1",
   "verified":true},"qa":{"status":"GO","issues":0,"review":"subagent run k1l2m3"}}' \
-  | bash skills/project-rules/scripts/quality-ledger.sh --add
+  | bash skills/role-governance/scripts/quality-ledger.sh --add
 ```
 
-Two weeks later, the monthly summary says what the process produced:
+Two weeks later, an illustrative monthly summary could say:
 
 ```bash
-$ bash skills/project-rules/scripts/quality-ledger.sh --summary
+$ bash skills/role-governance/scripts/quality-ledger.sh --summary
 quality-ledger: 24 entries
   QA: GO=20 NO-GO=2 PARTIAL=2
   GO rate: 83.3%
@@ -239,8 +257,9 @@ quality-ledger: 24 entries
   roles: contract-coordinator=6, frontend-engineer=5, change-coordinator=4, ...
 ```
 
-A repeated NO-GO on the same role would now be visible and fixable — the
-loop is closed.
+A repeated NO-GO on the same role would now be visible. It is a process signal,
+not proof of product quality; compare it with verified receipts, rework,
+escaped defects, cycle time, and cost before changing the routing rules.
 
 ### 7. The smaller L1 path, for contrast
 
@@ -251,7 +270,9 @@ Gate passes, and the task executes directly with a compact receipt — no
 packets, no subagents. Governance scales down to a single line of context
 instead of adding ceremony to every task.
 
-## How It Compares| | This skill | Subagent packs (e.g. awesome-claude-code-subagents) | Orchestration frameworks (e.g. maestro) | Methodology kits (e.g. BMAD) |
+## How It Compares
+
+| | This skill | Subagent packs (e.g. awesome-claude-code-subagents) | Orchestration frameworks (e.g. maestro) | Methodology kits (e.g. BMAD) |
 |---|---|---|---|---|
 | Role definitions | Yes, with decision scope | Persona prompts only | Implicit | Yes, fixed SDLC phases |
 | Direct-vs-coordinate gate | Deterministic checklist | No | No | Workflow-size heuristics |

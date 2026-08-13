@@ -1,0 +1,33 @@
+# Ownership manifest for this governance-skill repository itself. Host projects
+# should copy and adapt templates/doc-ownership.example.yaml instead of reusing
+# this map: this owner describes the skill implementation, not product code.
+
+owners:
+  - id: governance-skill
+    kind: governance
+    label: Role-governance rules, scripts, tests, and derived role templates
+    docs_required: false
+    knowledge_roles:
+      - product-analyst
+      - experience-designer
+      - contract-architect
+      - frontend-engineer
+      - backend-engineer
+      - quality-engineer
+      - release-engineer
+      - docs-governor
+      - change-coordinator
+      - contract-coordinator
+      - incident-coordinator
+    code:
+      - SKILL.md
+      - README.md
+      - doc-ownership.yaml
+      - rules/**
+      - workflows/**
+      - references/**
+      - knowledge/**
+      - scripts/**
+      - templates/**
+      - tests/**
+      - .github/**

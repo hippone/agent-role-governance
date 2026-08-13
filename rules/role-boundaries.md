@@ -56,6 +56,11 @@ An L2 coordinator must:
 - When an L2 task changes product code, a public contract, persistence, identity, billing, privacy behavior, or runtime configuration, a `quality-engineer` subagent must independently inspect the resulting diff and relevant test evidence after the mutation owner finishes. The mutation owner cannot self-certify this packet.
 - The mandatory post-implementation `quality-engineer` review satisfies the one-subagent minimum. Do not add a second exploratory or documentation subagent only to satisfy the count; dispatch another packet only when it has an independent output that changes a decision, implementation, or evidence gate.
 - Use subagents for independent exploration, implementation with non-overlapping ownership, testing, log analysis, and review. Do not parallelize writes to overlapping files or dispatch work whose dependency is unresolved.
+- When the host exposes per-subagent tool permissions, read-only modes, sandbox
+  profiles, or isolated worktrees, encode Forbidden Zones there instead of
+  relying on prose alone. A `quality-engineer` review packet is read-only by
+  default; mutation tools are enabled only when test edits were explicitly
+  assigned. Record the effective host restriction in the delegation receipt.
 - Every packet records its execution mode and a delegation receipt with mode-specific evidence: a subagent tool/run identifier, a human handoff reference, an unavailable reason for `degraded-same-agent`, or `not-required` for L1 main-agent execution. The coordinator includes these receipts in its integrated return so subagent use can be distinguished from same-agent role passes.
 - If no real subagent or isolated subtask tool is available, state the limitation before continuing, mark the affected packets `degraded-same-agent`, report the missing independence in the final evidence, and record the environment constraint in the quality ledger. Never silently present same-agent role switching as delegated or independent work. Given the 2026 tool landscape (see `references/model-capabilities-2026.md`), a tool without any subagent capability is the exception; treat repeated degraded runs as a configuration problem to fix, not a routine state.
 
@@ -156,7 +161,12 @@ what a model merely "remembers" does not.
 - A knowledge update records awareness, not completion. It must preserve separate implementation and evidence gates and may explicitly say that no production verification occurred.
 - A test, build, deployment, browser, payment, provider, database, monitoring, or rollback evidence change can require a knowledge refresh even when no repository owner path changed; use the evidence-only lane in the workflow.
 
-Follow `workflows/update-role-knowledge.md`; `scripts/check-doc-sync.sh` supplies the deterministic minimum gate. A passing gate proves that an eligible role snapshot moved with each mapped owner, not that the snapshot is semantically complete.
+Follow `workflows/update-role-knowledge.md`; `scripts/check-doc-sync.sh` supplies
+the deterministic minimum gate. A stale placeholder no longer satisfies the
+gate: the touched snapshot needs a captured date, repository baseline,
+source-backed facts, and a dated Recent Delta. A passing gate still proves only
+this structural minimum, not that every statement is semantically correct;
+high-risk owners still need independent review or sampling.
 
 ## Completion Boundary
 

@@ -19,6 +19,9 @@
 #     Keep lists tight; adding files weakens the constraint.
 #   - `knowledge_roles` is an eligible-role set, not an all-roles checklist. One
 #     matching `knowledge/<role-id>.md` must move for every triggered owner.
+#     A stale placeholder does not satisfy the gate: the touched snapshot must
+#     carry a real captured date, repository baseline, source-backed facts, and
+#     a dated Recent Delta.
 #   - `docs_required: false` disables the owned-doc check for an owner. It does
 #     not disable the knowledge-snapshot requirement; only the controlled
 #     single-feature `[knowledge-na]` lane can do that.
@@ -29,9 +32,9 @@
 #     not negotiate.
 #   - Glob forms: exact path, `dir/**` prefix, or fnmatch pattern (`*` may cross `/`).
 #   - Code globs are repository-root-relative. The governance entries below use
-#     `skills/project-rules/...` because that is the checker's default base dir
-#     (`ROLE_GOVERNANCE_DIR`); adjust the prefix if you install the skill
-#     elsewhere.
+#     `skills/role-governance/...` as a sample in-repository install path. The
+#     checker auto-detects its own directory; adjust these ownership globs if
+#     you install the skill elsewhere.
 #   - Every role in `references/role-catalog.md` must appear in at least one
 #     owner's `knowledge_roles`.
 #
@@ -116,10 +119,10 @@ owners:
       - docs-governor
       - change-coordinator
     code:
-      - skills/project-rules/SKILL.md
-      - skills/project-rules/doc-ownership.yaml
-      - skills/project-rules/rules/**
-      - skills/project-rules/workflows/**
-      - skills/project-rules/references/**
-      - skills/project-rules/scripts/**
+      - skills/role-governance/SKILL.md
+      - skills/role-governance/doc-ownership.yaml
+      - skills/role-governance/rules/**
+      - skills/role-governance/workflows/**
+      - skills/role-governance/references/**
+      - skills/role-governance/scripts/**
       - README.md

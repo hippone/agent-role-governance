@@ -15,7 +15,6 @@
 
 set -euo pipefail
 
-BASE_DIR="${ROLE_GOVERNANCE_DIR:-skills/project-rules}"
 JSON=0
 if [ "${1:-}" = "--json" ]; then
   JSON=1
@@ -25,6 +24,28 @@ ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 if [ -z "$ROOT" ]; then
   echo "role-snapshot-audit: not inside a git repository" >&2
   exit 1
+fi
+ROOT="$(cd "$ROOT" && pwd -P)"
+
+SNAPSHOT_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+SNAPSHOT_SKILL_DIR="$(cd "$SNAPSHOT_SCRIPT_DIR/.." && pwd -P)"
+if [ -n "${ROLE_GOVERNANCE_DIR:-}" ]; then
+  BASE_DIR="${ROLE_GOVERNANCE_DIR%/}"
+  case "$BASE_DIR" in
+    "$ROOT") BASE_DIR="." ;;
+    "$ROOT"/*) BASE_DIR="${BASE_DIR#"$ROOT"/}" ;;
+    /*)
+      echo "role-snapshot-audit: ROLE_GOVERNANCE_DIR must be inside repository: $ROOT" >&2
+      exit 1
+      ;;
+  esac
+elif [ "$SNAPSHOT_SKILL_DIR" = "$ROOT" ]; then
+  BASE_DIR="."
+elif [[ "$SNAPSHOT_SKILL_DIR" == "$ROOT"/* ]]; then
+  BASE_DIR="${SNAPSHOT_SKILL_DIR#"$ROOT"/}"
+else
+  echo "role-snapshot-audit: skipped (global skill is outside repository and has no project manifest)"
+  exit 0
 fi
 
 MANIFEST="$ROOT/$BASE_DIR/doc-ownership.yaml"
@@ -45,6 +66,7 @@ import sys
 
 root = sys.argv[1]
 base_dir = sys.argv[2]
+base_prefix = "" if base_dir in {"", "."} else base_dir.rstrip("/") + "/"
 manifest_path = sys.argv[3]
 catalog_path = sys.argv[4]
 knowledge_dir = sys.argv[5]
@@ -141,9 +163,17 @@ for owner in owners:
         if role in role_patterns:
             role_patterns[role].extend(owner.get("code", []))
 
+dirty_paths = set()
+for diff_args in (
+    ("diff", "--name-only"),
+    ("diff", "--cached", "--name-only"),
+    ("ls-files", "--others", "--exclude-standard"),
+):
+    dirty_paths.update(path for path in git(*diff_args).splitlines() if path)
+
 results = []
 for role in catalog_roles:
-    snapshot = f"{base_dir}/knowledge/{role}.md"
+    snapshot = f"{base_prefix}knowledge/{role}.md"
     if not git("cat-file", "-e", f"HEAD:{snapshot}") and not __import__("os").path.exists(
         f"{root}/{snapshot}"
     ):
@@ -152,14 +182,16 @@ for role in catalog_roles:
     snap_commit = last_commit([snapshot])
     patterns = role_patterns.get(role, [])
     code_commit = last_commit(patterns) if patterns else None
+    updated_in_worktree = snapshot in dirty_paths
     stale = False
-    if snap_commit and code_commit:
-        stale = code_commit["epoch"] > snap_commit["epoch"]
-    elif code_commit and not snap_commit:
-        stale = True
+    if not updated_in_worktree:
+        if snap_commit and code_commit:
+            stale = code_commit["epoch"] > snap_commit["epoch"]
+        elif code_commit and not snap_commit:
+            stale = True
     results.append({
         "role": role,
-        "status": "stale" if stale else "fresh",
+        "status": "updated-in-worktree" if updated_in_worktree else ("stale" if stale else "fresh"),
         "snapshot_commit": snap_commit,
         "code_commit": code_commit,
     })
@@ -176,6 +208,8 @@ else:
                 f"{r['role']:24s} STALE  code moved {code.get('date', '?')} "
                 f"{code.get('subject', '')[:50]}"
             )
+        elif r["status"] == "updated-in-worktree":
+            print(f"{r['role']:24s} updated in worktree (commit after verification)")
         else:
             print(f"{r['role']:24s} fresh (snapshot at {r['snapshot_commit']['date']})")
 PY

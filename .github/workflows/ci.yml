@@ -1,0 +1,20 @@
+name: role-governance checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run self-tests and integration fixtures
+        run: bash tests/run.sh
+      - name: Validate repository wiring
+        run: bash scripts/doctor.sh --strict
+      - name: Validate clean repository gate
+        run: bash scripts/check-doc-sync.sh --dirty

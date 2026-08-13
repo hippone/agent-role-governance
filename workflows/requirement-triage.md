@@ -31,9 +31,9 @@ Do not create a new workflow-state directory. Persist the envelope only when the
 Identify the routing role first, then apply the L1 Direct Gate in
 `rules/role-boundaries.md`:
 
-1. Run the matcher: `references/role-matcher.md` for the protocol, or
-   `bash scripts/select-role.sh < request.txt` for the executable table
-   (`--self-test` after edits).
+1. Run the matcher: build the envelope above and pass it to
+   `bash scripts/select-role.sh --envelope`. Plain-text mode is a compatibility
+   candidate generator only; any L1 result requires envelope recheck.
 2. Reconcile the matcher output against the request envelope and the default
    routing table below. The matcher narrows; the coordinator decides.
 3. Apply the L1 Direct Gate:
@@ -83,6 +83,7 @@ task unless an existing artifact chain already requires persistence.
 - Role: <role-id>
 - Parent / Return To: <request-or-coordinator>
 - Execution Mode / Delegation Receipt: subagent (default) | main-agent | human-handoff | degraded-same-agent; <tool/run id | not-required | handoff reference | unavailable reason + ledger record>
+- Host Enforcement: <read-only | tool allowlist | sandbox/worktree | prose-only + unavailable reason>
 - Risk Route / Model Plan: R0 | R1 | R2 | R3; inherit | override; <model>; <reasoning effort>; <fork_turns>; <routing rationale>
 - Affected Surface / Owner Status: <surface>; <owner ids | not_applicable | unmapped>
 - Knowledge File / Impact: <knowledge/role-id.md>; <owner ids whose durable knowledge may change>

@@ -75,7 +75,7 @@ Rules:
 After self-update, run the deterministic gate:
 
 ```bash
-bash skills/project-rules/scripts/check-doc-sync.sh --dirty
+bash scripts/check-doc-sync.sh --dirty
 ```
 
 - A failure means at least one affected owner has no eligible snapshot in the
