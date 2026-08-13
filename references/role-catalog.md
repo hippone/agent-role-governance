@@ -34,7 +34,7 @@ This catalog defines functional responsibility, decision boundaries, routine con
 - That required `quality-engineer` review satisfies the L2 one-subagent minimum; do not create an extra packet solely for agent-count compliance. L1 work uses a compact active-context receipt and has no default subagent requirement.
 - Subagent model and reasoning selection follows `rules/role-boundaries.md` risk routing, not this catalog's role names. The same role may use Terra/low for deterministic checks and Sol/high or xhigh for high-cost semantic review.
 - `release-engineer` activates only for an explicitly authorized release or operational action.
-- `docs-governor` records accepted truth. Any change to `routing.yaml`, role definitions, `required_reads`, route IDs/order, generated shell blocks, or activation semantics must use `change-coordinator`; it is not ordinary docs wording maintenance.
+- `docs-governor` records accepted truth. Any change to task routing configuration, role definitions, route IDs/order, or activation semantics must use `change-coordinator`; it is not ordinary docs wording maintenance.
 
 ## Current Knowledge Snapshots
 

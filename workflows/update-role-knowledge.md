@@ -30,7 +30,7 @@ run:
 
 ```bash
 DOC_SYNC_DOCS_NA=1 DOC_SYNC_KNOWLEDGE_NA=1 \
-  bash scripts/check-doc-sync.sh --dirty
+  bash skills/project-rules/scripts/check-doc-sync.sh --dirty
 ```
 
 Never use this lane for new behavior, bug fixes, route changes, shared helpers,
@@ -69,8 +69,11 @@ Replace obsolete statements instead of appending contradictory history. Set `kno
 
 ## 5. Run The Gate
 
+Run from the repository root. Adjust the script path when the skill is
+installed elsewhere:
+
 ```bash
-bash scripts/check-doc-sync.sh --dirty
+bash skills/project-rules/scripts/check-doc-sync.sh --dirty
 ```
 
 Before a commit, stage both the implementation/docs and every selected knowledge snapshot. `--staged` and the commit hook intentionally ignore unstaged files, so an unstaged snapshot cannot create a false pass. `[docs-na]` may waive only the owned-doc requirement. `[knowledge-na]` additionally waives the role receiver only when the controlled lane above passes; otherwise it is blocking misuse.

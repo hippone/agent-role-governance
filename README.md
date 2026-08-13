@@ -77,18 +77,35 @@ git clone https://github.com/hippone/agent-role-governance ~/.codex/skills/role-
 
 ## Wire Up A Project
 
-1. Copy `templates/doc-ownership.example.yaml` next to the skill root as
-   `doc-ownership.yaml` and adapt owners, code globs, docs, and
-   `knowledge_roles` to your repo. Every catalog role must appear in at least
-   one owner.
+The role prompts and packet rules work from any install location (including
+global skill dirs). The **doc-sync commit gate only works when the skill lives
+inside your project repository**, because it inspects git change sets — global
+installations skip the gate silently.
+
+1. Copy `templates/doc-ownership.example.yaml` into the skill directory inside
+   your repo as `doc-ownership.yaml`, and adapt owners, code globs, docs, and
+   `knowledge_roles` to your repo. Code globs are repository-root-relative;
+   the example's `skills/project-rules/...` governance globs match the default
+   install location — adjust the prefix if you install elsewhere. Every catalog
+   role must appear in at least one owner.
 2. Optional: add `references/system-map.md` if you want the gate to require
    registering new pages/contexts/backend modules.
-3. Run `bash scripts/check-doc-sync.sh --dirty` before closing tasks.
+3. Run from the repository root:
+
+   ```bash
+   bash skills/project-rules/scripts/check-doc-sync.sh --dirty
+   ```
+
+   If the skill is installed elsewhere, point the checker at it:
+
+   ```bash
+   ROLE_GOVERNANCE_DIR=.agents/skills/role-governance \
+     bash .agents/skills/role-governance/scripts/check-doc-sync.sh --dirty
+   ```
+
 4. Optional commit hook: register `scripts/check-doc-sync.sh --hook-commit` as
    a PreToolUse hook for `git commit` in your agent of choice. The checker
-   reads the hook's JSON input and only acts on commit commands.
-5. If the skill lives somewhere other than `skills/project-rules`, set
-   `ROLE_GOVERNANCE_DIR` when invoking the script.
+   reads the hook's JSON input on stdin and only acts on commit commands.
 
 ## How It Compares
 

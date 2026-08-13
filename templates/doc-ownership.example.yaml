@@ -28,6 +28,10 @@
 #     ("all" = every feature surface) — the human decides follow-up, agents do
 #     not negotiate.
 #   - Glob forms: exact path, `dir/**` prefix, or fnmatch pattern (`*` may cross `/`).
+#   - Code globs are repository-root-relative. The governance entries below use
+#     `skills/project-rules/...` because that is the checker's default base dir
+#     (`ROLE_GOVERNANCE_DIR`); adjust the prefix if you install the skill
+#     elsewhere.
 #   - Every role in `references/role-catalog.md` must appear in at least one
 #     owner's `knowledge_roles`.
 #
@@ -95,10 +99,10 @@ owners:
       - docs-governor
       - change-coordinator
     code:
-      - SKILL.md
-      - doc-ownership.yaml
-      - rules/**
-      - workflows/**
-      - references/**
-      - scripts/**
+      - skills/project-rules/SKILL.md
+      - skills/project-rules/doc-ownership.yaml
+      - skills/project-rules/rules/**
+      - skills/project-rules/workflows/**
+      - skills/project-rules/references/**
+      - skills/project-rules/scripts/**
       - README.md
