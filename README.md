@@ -25,6 +25,11 @@ and how durable per-role knowledge stays in sync with code changes.
   own snapshot after work — `scripts/role-snapshot-audit.sh` finds snapshots
   whose owners' code moved without an update, so staleness is caught
   proactively instead of at commit time.
+- **Measurable quality evidence.** `workflows/quality-ledger.md` records an
+  append-only JSONL receipt per L2 task — independent QA GO/NO-GO, issues,
+  routing verification — and `scripts/quality-ledger.sh` aggregates it into a
+  GO rate, issue counts, and route-verify rate. The process proves itself
+  instead of claiming it.
 - **L1 Direct Gate.** A checklist, not vibes. If any condition fails, the task
   must go through an L2 coordinator, even when the diff is small.
 - **C0-C4 context depth.** Explicit disclosure slices per packet: C0 request,
@@ -54,12 +59,14 @@ workflows/requirement-triage.md request envelope -> owner resolution ->
                                 role matching -> task packet contract
 workflows/role-self-maintenance.md
                                 per-role self-audit / self-fetch / self-update
+workflows/quality-ledger.md     append-only quality receipts and how to read them
 workflows/update-role-knowledge.md
                                 manual snapshot refresh (legacy lane)
 knowledge/*.md                  11 role snapshot templates (ship empty)
 scripts/check-doc-sync.sh       deterministic doc/knowledge sync gate
 scripts/select-role.sh          executable role matcher with self-test
 scripts/role-snapshot-audit.sh  expired-snapshot sweep
+scripts/quality-ledger.sh       aggregates GO rate, issues, route-verify rate
 templates/doc-ownership.example.yaml
                                 example ownership manifest; copy and adapt
 ```

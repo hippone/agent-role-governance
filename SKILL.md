@@ -37,8 +37,10 @@ Every non-trivial task:
    execute. L2: produce bounded L1 packets and dispatch at least one through a
    real subagent.
 4. On change completion, run the deterministic gate
-   (`scripts/check-doc-sync.sh`) before closing or committing, and sweep for
-   expired snapshots (`scripts/role-snapshot-audit.sh`).
+   (`scripts/check-doc-sync.sh`) before closing or committing, sweep for
+   expired snapshots (`scripts/role-snapshot-audit.sh`), and append the task's
+   quality receipt to the ledger (`scripts/quality-ledger.sh`) so the process
+   produces measurable evidence instead of self-claims.
 
 ## File Map
 
@@ -49,11 +51,13 @@ Every non-trivial task:
 | `references/role-matcher.md` | Deterministic role identification: T1 hard signals, T2 request shape, T3 gate recheck |
 | `workflows/requirement-triage.md` | Pre-step: request envelope, owner resolution, L1/L2 selection, L2 task packet contract |
 | `workflows/role-self-maintenance.md` | Roles self-audit / self-fetch / self-update their knowledge snapshots |
+| `workflows/quality-ledger.md` | Append-only quality receipts: independent QA GO/NO-GO, routing verification |
 | `workflows/update-role-knowledge.md` | Refresh `knowledge/<role-id>.md` snapshots when code/contracts/evidence change |
 | `knowledge/*.md` | Derived per-role knowledge snapshots (templates ship empty) |
 | `scripts/check-doc-sync.sh` | Deterministic commit gate over `doc-ownership.yaml` |
 | `scripts/select-role.sh` | Executable role matcher with a self-test table |
 | `scripts/role-snapshot-audit.sh` | Finds snapshots whose owners' code moved without an update |
+| `scripts/quality-ledger.sh` | Aggregates the quality ledger into GO rate, issue counts, route-verify rate |
 | `templates/doc-ownership.example.yaml` | Example ownership manifest: code globs, owned docs, eligible knowledge roles |
 
 ## Rule Priority
