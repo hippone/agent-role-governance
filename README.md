@@ -55,6 +55,9 @@ rules/role-boundaries.md        authority model, L1/L2 gates, C0-C4, R0-R3,
 references/role-catalog.md      8 L1 + 3 L2 roles with decision scope and
                                 routine context limits
 references/role-matcher.md      deterministic role identification protocol
+references/model-capabilities-2026.md
+                                grounded 2026-07/08 model facts (context
+                                windows, tiers, boundaries) with freshness markers
 workflows/requirement-triage.md request envelope -> owner resolution ->
                                 role matching -> task packet contract
 workflows/role-self-maintenance.md
@@ -67,6 +70,7 @@ scripts/check-doc-sync.sh       deterministic doc/knowledge sync gate
 scripts/select-role.sh          executable role matcher with self-test
 scripts/role-snapshot-audit.sh  expired-snapshot sweep
 scripts/quality-ledger.sh       aggregates GO rate, issues, route-verify rate
+scripts/check-external-facts.sh flags stale external-fact markers (180 days)
 templates/doc-ownership.example.yaml
                                 example ownership manifest; copy and adapt
 ```

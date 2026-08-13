@@ -49,6 +49,7 @@ Every non-trivial task:
 | `rules/role-boundaries.md` | Authority model, L1/L2 gates, C0-C4 context depth, R0-R3 subagent risk routing, knowledge duty, completion boundary |
 | `references/role-catalog.md` | 8 L1 + 3 L2 functional roles with decision scope and routine context limits |
 | `references/role-matcher.md` | Deterministic role identification: T1 hard signals, T2 request shape, T3 gate recheck |
+| `references/model-capabilities-2026.md` | Grounded 2026-07/08 model facts: context windows, tiers, boundaries; design decisions trace to it |
 | `workflows/requirement-triage.md` | Pre-step: request envelope, owner resolution, L1/L2 selection, L2 task packet contract |
 | `workflows/role-self-maintenance.md` | Roles self-audit / self-fetch / self-update their knowledge snapshots |
 | `workflows/quality-ledger.md` | Append-only quality receipts: independent QA GO/NO-GO, routing verification |
@@ -58,6 +59,7 @@ Every non-trivial task:
 | `scripts/select-role.sh` | Executable role matcher with a self-test table |
 | `scripts/role-snapshot-audit.sh` | Finds snapshots whose owners' code moved without an update |
 | `scripts/quality-ledger.sh` | Aggregates the quality ledger into GO rate, issue counts, route-verify rate |
+| `scripts/check-external-facts.sh` | Flags external-fact markers older than 180 days (model knowledge freshness) |
 | `templates/doc-ownership.example.yaml` | Example ownership manifest: code globs, owned docs, eligible knowledge roles |
 
 ## Rule Priority
@@ -76,3 +78,6 @@ Every non-trivial task:
   may not redefine the requested behavior.
 - The skill governs process, not the project's product rules. The host
   project still supplies its own routing, coding standards, and domain docs.
+- Design decisions about context limits, risk routing, and delegation rules
+  are grounded in `references/model-capabilities-2026.md`; re-verify its
+  facts before changing them (markers go stale in 180 days).
