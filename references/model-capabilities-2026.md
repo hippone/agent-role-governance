@@ -44,6 +44,43 @@ than pointer-based prompts).
 | Gemini 3.5 Flash | 1M class | — |
 | Gemini 3.5 Flash-Lite | 1M class | Cheap tier for high-volume work |
 
+## Agent Tool Landscape (2026-07/08)
+
+<!-- external-fact: verified=2026-08-13 source=https://docs.anthropic.com/en/docs/claude-code/sub-agents -->
+<!-- external-fact: verified=2026-08-13 source=https://opencode.ai/docs/agents/ -->
+<!-- external-fact: verified=2026-08-13 source=https://developers.openai.com/codex/agent-configuration/subagents -->
+<!-- external-fact: verified=2026-08-13 source=https://google.github.io/gemini-cli/ -->
+
+| Tool | Subagent isolation | Skills | Rules format | Commit-time hooks | Model control |
+|---|---|---|---|---|---|
+| **Claude Code** | Native: each subagent runs in its own context window, custom system prompt, specific tool access, independent permissions | Native (`.claude/skills`, user/project scope) | `CLAUDE.md` (+ subagent dirs) | Native lifecycle hooks (`PreToolUse`, `Stop`, `PostToolUse`, HTTP or shell) | Per-subagent `model` field; `Explore` inherits main model |
+| **opencode** | Native: primary agents (Build/Plan) + subagents (General/Explore/Scout), switch with Tab or `@mention` | Native (skills dir) | `AGENTS.md` | Plugin event system (JS/TS plugins, `--hook-commit` compatible) | Per-agent model config; permissions gate tools |
+| **Codex (local CLI)** | Native: subagents run parallel workflows, spawn specialized agents, each with own model and tools | Native (skills + plugins) | `AGENTS.md` (global `~/.codex` + project, layered) | `AGENTS.md`-driven; hooks via plugins | Per-agent model config; sandbox agents |
+| **Gemini CLI** | Subagents supported | Skills supported | `GEMINI.md` custom context files | Hook support | Gemini 3 models, 1M context |
+| **Qwen Code** | SubAgents + Agent Teams, dynamic workflows | Auto-Skills, built-in skills | `AGENTS.md` | Hooks | Multi-provider (OpenAI/Anthropic/Gemini/Qwen/any local), runtime switch |
+| **Pi (badlogic)** | Extension-based: subagent extension (own context), custom via TS extensions | Skills + prompt templates, Pi packages | `AGENTS.md`/custom | Extension events (permission gates, path protection, SSH, sandbox) | 15+ providers, hundreds of models, mid-session `/model` switch |
+| **Cursor (IDE)** | Subagents native | Native skills | Rules (`.cursor/rules`) + `AGENTS.md` | Hooks | IDE-managed models |
+
+### Design implications
+
+- **Subagent isolation is now the norm, not the exception.** Every mainstream
+  terminal/IDE agent ships real isolated-context subagents. The skill's
+  `degraded-same-agent` fallback is only needed on unusual setups — but the
+  receipt mechanism remains load-bearing: it is the only way to prove which
+  mode actually ran.
+- **Skills and AGENTS.md are universal.** The skill's markdown-first design
+  (no runtime plugin required) installs on all seven tools above. Packaging
+  as a skill pack is the zero-friction choice.
+- **Commit-time gates differ.** Claude Code, opencode, Cursor and Qwen
+  support commit-ish lifecycle hooks; Pi needs an extension; Gemini CLI and
+  Codex are plugin/hook-driven. The `--hook-commit` mode is implemented once
+  and adapter is a settings file per tool — keep the gate itself
+  tool-agnostic (it only reads stdin JSON).
+- **Model control is per-agent everywhere.** All tools let you pin a model
+  per agent/subagent. R0-R3 routing is implementable on every target; the
+  routing table stays in the skill, the model pin goes in each tool's agent
+  config.
+
 ## Capability Boundaries That Shape This Design
 
 1. **1M context is now universal on flagship tiers, but NOT on cheap tiers.**
