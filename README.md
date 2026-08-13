@@ -55,7 +55,7 @@ templates/doc-ownership.example.yaml
 
 ```bash
 mkdir -p ~/.claude/skills
-git clone https://github.com/<you>/agent-role-governance ~/.claude/skills/role-governance
+git clone https://github.com/hippone/agent-role-governance ~/.claude/skills/role-governance
 ```
 
 Then ask the agent to "run role triage for this change" or add the skill to
@@ -65,14 +65,14 @@ your project's instructions so it activates on every task.
 
 ```bash
 mkdir -p ~/.config/opencode/skills
-git clone https://github.com/<you>/agent-role-governance ~/.config/opencode/skills/role-governance
+git clone https://github.com/hippone/agent-role-governance ~/.config/opencode/skills/role-governance
 ```
 
 ### Codex
 
 ```bash
 mkdir -p ~/.codex/skills
-git clone https://github.com/<you>/agent-role-governance ~/.codex/skills/role-governance
+git clone https://github.com/hippone/agent-role-governance ~/.codex/skills/role-governance
 ```
 
 ## Wire Up A Project
