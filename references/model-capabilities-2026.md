@@ -49,15 +49,16 @@ than pointer-based prompts).
 <!-- external-fact: verified=2026-08-13 source=https://docs.anthropic.com/en/docs/claude-code/sub-agents -->
 <!-- external-fact: verified=2026-08-13 source=https://opencode.ai/docs/agents/ -->
 <!-- external-fact: verified=2026-08-13 source=https://developers.openai.com/codex/agent-configuration/subagents -->
-<!-- external-fact: verified=2026-08-13 source=https://google.github.io/gemini-cli/ -->
+<!-- external-fact: verified=2026-08-13 source=https://github.com/google-antigravity/antigravity-cli -->
+<!-- external-fact: verified=2026-08-13 source=https://github.com/xai-org/grok-build -->
 
 | Tool | Subagent isolation | Skills | Rules format | Commit-time hooks | Model control |
 |---|---|---|---|---|---|
 | **Claude Code** | Native: each subagent runs in its own context window, custom system prompt, specific tool access, independent permissions | Native (`.claude/skills`, user/project scope) | `CLAUDE.md` (+ subagent dirs) | Native lifecycle hooks (`PreToolUse`, `Stop`, `PostToolUse`, HTTP or shell) | Per-subagent `model` field; `Explore` inherits main model |
 | **opencode** | Native: primary agents (Build/Plan) + subagents (General/Explore/Scout), switch with Tab or `@mention` | Native (skills dir) | `AGENTS.md` | Plugin event system (JS/TS plugins, `--hook-commit` compatible) | Per-agent model config; permissions gate tools |
 | **Codex (local CLI)** | Native: subagents run parallel workflows, spawn specialized agents, each with own model and tools | Native (skills + plugins) | `AGENTS.md` (global `~/.codex` + project, layered) | `AGENTS.md`-driven; hooks via plugins | Per-agent model config; sandbox agents |
-| **Gemini CLI** | Subagents supported | Skills supported | `GEMINI.md` custom context files | Hook support | Gemini 3 models, 1M context |
-| **Qwen Code** | SubAgents + Agent Teams, dynamic workflows | Auto-Skills, built-in skills | `AGENTS.md` | Hooks | Multi-provider (OpenAI/Anthropic/Gemini/Qwen/any local), runtime switch |
+| **Antigravity CLI** | Native: subagents (own context window, parallel, reports summary to parent) | Native (`SKILL.md` with frontmatter, e.g. `disable-slash-command`) | `AGENTS.md`-compatible | Native `hooks.json` (ordered, `PostInvocation`, `Stop`) | `/model` + `/effort` commands; `agents` subcommand with JSON output; Chrome DevTools MCP built-in |
+| **Grok Build (xAI)** | Native: subagents are independent child sessions running in parallel, each with own context window | Native: skills as `SKILL.md` dirs, auto-activate on task | `AGENTS.md` | Native hooks (custom-hooks + hooks-and-plugins docs) | Default `grok-4.5` (SpaceXAI-hosted); custom models via endpoints, multi-provider |
 | **Pi (badlogic)** | Extension-based: subagent extension (own context), custom via TS extensions | Skills + prompt templates, Pi packages | `AGENTS.md`/custom | Extension events (permission gates, path protection, SSH, sandbox) | 15+ providers, hundreds of models, mid-session `/model` switch |
 | **Cursor (IDE)** | Subagents native | Native skills | Rules (`.cursor/rules`) + `AGENTS.md` | Hooks | IDE-managed models |
 
@@ -71,11 +72,11 @@ than pointer-based prompts).
 - **Skills and AGENTS.md are universal.** The skill's markdown-first design
   (no runtime plugin required) installs on all seven tools above. Packaging
   as a skill pack is the zero-friction choice.
-- **Commit-time gates differ.** Claude Code, opencode, Cursor and Qwen
-  support commit-ish lifecycle hooks; Pi needs an extension; Gemini CLI and
-  Codex are plugin/hook-driven. The `--hook-commit` mode is implemented once
-  and adapter is a settings file per tool — keep the gate itself
-  tool-agnostic (it only reads stdin JSON).
+- **Commit-time gates differ.** Claude Code, opencode, Cursor, Antigravity CLI
+  and Grok Build support lifecycle hooks; Pi needs an extension; Codex is
+  plugin-driven. The `--hook-commit` mode is implemented once and the adapter
+  is a settings file per tool — keep the gate itself tool-agnostic (it only
+  reads stdin JSON).
 - **Model control is per-agent everywhere.** All tools let you pin a model
   per agent/subagent. R0-R3 routing is implementable on every target; the
   routing table stays in the skill, the model pin goes in each tool's agent
