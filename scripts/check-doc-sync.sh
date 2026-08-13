@@ -20,23 +20,26 @@ if [ -z "$ROOT" ]; then
   exit 0
 fi
 ROOT="$(cd "$ROOT" && pwd -P)"
+ROOT_CMP="$(printf '%s' "$ROOT" | tr '[:upper:]' '[:lower:]')"
 
 DOC_SYNC_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 DOC_SYNC_SKILL_DIR="$(cd "$DOC_SYNC_SCRIPT_DIR/.." && pwd -P)"
+DOC_SYNC_SKILL_CMP="$(printf '%s' "$DOC_SYNC_SKILL_DIR" | tr '[:upper:]' '[:lower:]')"
 if [ -n "${ROLE_GOVERNANCE_DIR:-}" ]; then
   DOC_SYNC_BASE_DIR="${ROLE_GOVERNANCE_DIR%/}"
-  case "$DOC_SYNC_BASE_DIR" in
-    "$ROOT") DOC_SYNC_BASE_DIR="." ;;
-    "$ROOT"/*) DOC_SYNC_BASE_DIR="${DOC_SYNC_BASE_DIR#"$ROOT"/}" ;;
+  DOC_SYNC_BASE_CMP="$(printf '%s' "$DOC_SYNC_BASE_DIR" | tr '[:upper:]' '[:lower:]')"
+  case "$DOC_SYNC_BASE_CMP" in
+    "$ROOT_CMP") DOC_SYNC_BASE_DIR="." ;;
+    "$ROOT_CMP"/*) DOC_SYNC_BASE_DIR="${DOC_SYNC_BASE_DIR#"$ROOT"/}" ;;
     /*)
       echo "doc-sync: 1 violation(s), 0 warning(s)"
       echo "VIOLATION CONFIG: ROLE_GOVERNANCE_DIR must be inside repository: $ROOT"
       exit 1
       ;;
   esac
-elif [ "$DOC_SYNC_SKILL_DIR" = "$ROOT" ]; then
+elif [ "$DOC_SYNC_SKILL_CMP" = "$ROOT_CMP" ]; then
   DOC_SYNC_BASE_DIR="."
-elif [[ "$DOC_SYNC_SKILL_DIR" == "$ROOT"/* ]]; then
+elif [[ "$DOC_SYNC_SKILL_CMP" == "$ROOT_CMP"/* ]]; then
   DOC_SYNC_BASE_DIR="${DOC_SYNC_SKILL_DIR#"$ROOT"/}"
 else
   echo "doc-sync: skipped (global skill is outside repository; copy it into the project and add doc-ownership.yaml)"

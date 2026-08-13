@@ -33,16 +33,19 @@ if [ -z "$DOCTOR_ROOT" ]; then
   exit 0
 fi
 DOCTOR_ROOT="$(cd "$DOCTOR_ROOT" && pwd -P)"
+DOCTOR_ROOT_CMP="$(printf '%s' "$DOCTOR_ROOT" | tr '[:upper:]' '[:lower:]')"
+DOCTOR_SKILL_CMP="$(printf '%s' "$DOCTOR_SKILL_DIR" | tr '[:upper:]' '[:lower:]')"
 
 if [ -n "${ROLE_GOVERNANCE_DIR:-}" ]; then
   DOCTOR_BASE_DIR="${ROLE_GOVERNANCE_DIR%/}"
-  case "$DOCTOR_BASE_DIR" in
-    "$DOCTOR_ROOT") DOCTOR_BASE_DIR="." ;;
-    "$DOCTOR_ROOT"/*) DOCTOR_BASE_DIR="${DOCTOR_BASE_DIR#"$DOCTOR_ROOT"/}" ;;
+  DOCTOR_BASE_CMP="$(printf '%s' "$DOCTOR_BASE_DIR" | tr '[:upper:]' '[:lower:]')"
+  case "$DOCTOR_BASE_CMP" in
+    "$DOCTOR_ROOT_CMP") DOCTOR_BASE_DIR="." ;;
+    "$DOCTOR_ROOT_CMP"/*) DOCTOR_BASE_DIR="${DOCTOR_BASE_DIR#"$DOCTOR_ROOT"/}" ;;
   esac
-elif [ "$DOCTOR_SKILL_DIR" = "$DOCTOR_ROOT" ]; then
+elif [ "$DOCTOR_SKILL_CMP" = "$DOCTOR_ROOT_CMP" ]; then
   DOCTOR_BASE_DIR="."
-elif [[ "$DOCTOR_SKILL_DIR" == "$DOCTOR_ROOT"/* ]]; then
+elif [[ "$DOCTOR_SKILL_CMP" == "$DOCTOR_ROOT_CMP"/* ]]; then
   DOCTOR_BASE_DIR="${DOCTOR_SKILL_DIR#"$DOCTOR_ROOT"/}"
 else
   DOCTOR_BASE_DIR=""

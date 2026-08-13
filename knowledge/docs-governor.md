@@ -42,4 +42,5 @@ context_contract: references/role-catalog.md
 
 ## Recent Deltas
 
+- 2026-08-13: doctor.sh and check-doc-sync.sh compare repository paths case-insensitively (macOS `openSource` vs `opensource`); self-bootstrap install is now detected as `in-repository`.
 - 2026-08-13: repository self-wiring, structured matcher input, strict ledger validation, installation doctor, and CI fixtures added; no production verification claimed.
