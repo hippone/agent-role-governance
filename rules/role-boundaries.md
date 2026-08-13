@@ -52,11 +52,12 @@ An L2 coordinator must:
 ## L2 Subagent Execution Requirement
 
 - An L2 task must dispatch at least one bounded L1 packet through a real subagent or equivalent isolated subtask tool. Naming a role, changing voice, or performing an ordered role pass in the same agent does not satisfy this requirement.
+- **Real-subagent dispatch is the default, not an upgrade.** All mainstream coding tools (Claude Code, opencode, Codex, Antigravity CLI, Grok Build, Cursor) provide native isolated-context subagents, and cheap model tiers make independent execution affordable. Same-agent role-switching (`degraded-same-agent`) is accepted only when the runtime genuinely lacks a subagent capability and the environment constraint is recorded in the packet receipt and the quality ledger; it is never the quiet default for cost convenience.
 - When an L2 task changes product code, a public contract, persistence, identity, billing, privacy behavior, or runtime configuration, a `quality-engineer` subagent must independently inspect the resulting diff and relevant test evidence after the mutation owner finishes. The mutation owner cannot self-certify this packet.
 - The mandatory post-implementation `quality-engineer` review satisfies the one-subagent minimum. Do not add a second exploratory or documentation subagent only to satisfy the count; dispatch another packet only when it has an independent output that changes a decision, implementation, or evidence gate.
 - Use subagents for independent exploration, implementation with non-overlapping ownership, testing, log analysis, and review. Do not parallelize writes to overlapping files or dispatch work whose dependency is unresolved.
 - Every packet records its execution mode and a delegation receipt with mode-specific evidence: a subagent tool/run identifier, a human handoff reference, an unavailable reason for `degraded-same-agent`, or `not-required` for L1 main-agent execution. The coordinator includes these receipts in its integrated return so subagent use can be distinguished from same-agent role passes.
-- If no real subagent or isolated subtask tool is available, state the limitation before continuing, mark the affected packets `degraded-same-agent`, and report the missing independence in the final evidence. Never silently present same-agent role switching as delegated or independent work.
+- If no real subagent or isolated subtask tool is available, state the limitation before continuing, mark the affected packets `degraded-same-agent`, report the missing independence in the final evidence, and record the environment constraint in the quality ledger. Never silently present same-agent role switching as delegated or independent work. Given the 2026 tool landscape (see `references/model-capabilities-2026.md`), a tool without any subagent capability is the exception; treat repeated degraded runs as a configuration problem to fix, not a routine state.
 
 An L2 coordinator may avoid or stop subagent dispatch only after re-running the L1 Direct Gate, reclassifying the task as `L1-direct`, recording a replacement compact L1 receipt, and marking the previous L2 packet superseded. Human handoffs remain valid when explicitly requested, but do not count as a subagent receipt.
 
@@ -65,15 +66,18 @@ An L2 coordinator may avoid or stop subagent dispatch only after re-running the 
 Choose a subagent model and reasoning effort from the packet's risk, not its
 role title. User-specified models win. Otherwise inherit the parent by default
 and override only when the expected quality or cost difference is material.
-Model names below are placeholders: substitute whatever model tiers the active
-runtime exposes.
+Model tiers below are placeholders: read the actual three-tier family of the
+active runtime (e.g. 2026-07/08: OpenAI Sol/Terra/Luna, Claude 5 family /
+Haiku 4.5, Gemini 3.6 Flash family, Grok 4.5 tiering — see
+`references/model-capabilities-2026.md`). Never hardcode a model slug; the
+runtime exposes what is available.
 
 | Risk | Signals | Preferred route |
 |---|---|---|
-| R0 Mechanical | Deterministic lookup, file inventory, command execution, or formatting check; no product judgment | cheapest available model, `low` |
-| R1 Bounded | One owner, accepted behavior/contract, reversible implementation or focused tests | cheapest available model, `medium` |
-| R2 Coordinated | Cross-surface behavior, shared contract/state, ambiguous root cause, or semantic QA over cross-owner/shared behavior | most capable available model, `high` |
-| R3 Critical | Identity, payment, privacy, data loss, production incident, irreversible migration, or final review where a miss has high cost | most capable available model, `xhigh` |
+| R0 Mechanical | Deterministic lookup, file inventory, command execution, or formatting check; no product judgment | cheapest available tier, `low` |
+| R1 Bounded | One owner, accepted behavior/contract, reversible implementation or focused tests | cheapest available tier, `medium` |
+| R2 Coordinated | Cross-surface behavior, shared contract/state, ambiguous root cause, or semantic QA over cross-owner/shared behavior | most capable available tier, `high` |
+| R3 Critical | Identity, payment, privacy, data loss, production incident, irreversible migration, or final review where a miss has high cost | most capable available tier, `xhigh` |
 
 Apply these constraints:
 
@@ -115,7 +119,12 @@ Model-route receipt examples:
 
 ## Context Depth
 
-Context depth controls detail, not access authorization. Use the lowest level that is sufficient for the assigned output.
+Context depth controls **cost and attention quality, not access authorization**.
+Grounding: 1M-token windows are now universal on flagship tiers, so
+overflow is no longer the constraint — input-token metering makes full-context
+packets expensive, and long windows degrade mid-context detail through
+compaction and lost-in-the-middle. Use the lowest level that is sufficient for
+the assigned output; pointer + conclusion beats pasted source.
 
 Every L2 task packet includes C0. C1-C4 are explicitly selected slices, not cumulative clearance levels. The routine limit in `references/role-catalog.md` is an upper disclosure boundary; widening it requires the active coordinator to state the blocking need and does not override repository, privacy, or user authorization.
 
@@ -131,7 +140,13 @@ Context packets must prefer pointers and short evidence excerpts over copied doc
 
 ## Role Knowledge Duty
 
-Each catalog role has one derived snapshot at `knowledge/<role-id>.md`. The snapshot is a functional knowledge lens, not a persistent persona, new source of truth, code owner, permission grant, or substitute for reading the task's canonical sources.
+Each catalog role has one derived snapshot at `knowledge/<role-id>.md`. The
+snapshot is the **repository's shared fact layer**: a functional knowledge
+lens readable by any agent, session, or tool — not a persistent persona, a
+personal memory substitute (tool-native memory is better at that), a new
+source of truth, code owner, permission grant, or substitute for reading the
+task's canonical sources. What a snapshot stores survives context compaction;
+what a model merely "remembers" does not.
 
 - After role selection, read only the selected role snapshot and any snapshots an L2 coordinator needs to reconcile; do not preload all role knowledge into every packet.
 - At task closure, resolve changed owner IDs through `doc-ownership.yaml`. For every triggered owner, update at least one snapshot named in that owner's `knowledge_roles`. The active routing role owns semantic completeness: the executing role for L1-direct work, or the coordinator for L2 work; it must add every other role whose accepted output or assumptions changed. A narrowly controlled `[knowledge-na]` waiver is available only through `workflows/update-role-knowledge.md` when one feature surface changed but no durable behavior, contract, evidence, ownership, or role fact changed; it never applies to infra, contract, governance, or multi-surface work.

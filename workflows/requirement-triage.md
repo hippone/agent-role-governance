@@ -82,7 +82,7 @@ task unless an existing artifact chain already requires persistence.
 - Mode: L2-coordinated
 - Role: <role-id>
 - Parent / Return To: <request-or-coordinator>
-- Execution Mode / Delegation Receipt: main-agent | subagent | human-handoff | degraded-same-agent; <not-required | tool/run id | handoff reference | unavailable reason>
+- Execution Mode / Delegation Receipt: subagent (default) | main-agent | human-handoff | degraded-same-agent; <tool/run id | not-required | handoff reference | unavailable reason + ledger record>
 - Risk Route / Model Plan: R0 | R1 | R2 | R3; inherit | override; <model>; <reasoning effort>; <fork_turns>; <routing rationale>
 - Affected Surface / Owner Status: <surface>; <owner ids | not_applicable | unmapped>
 - Knowledge File / Impact: <knowledge/role-id.md>; <owner ids whose durable knowledge may change>
@@ -109,7 +109,7 @@ task unless an existing artifact chain already requires persistence.
 
 L2 coordinators must tailor Inputs by role: behavior plus relevant client contracts for frontend; behavior plus contract/persistence for backend; current-versus-target scenarios and risk for QA; accepted decisions and artifact impact for docs. Do not copy the complete parent context into every packet.
 
-During an L2 task, dispatch at least one L1 packet through a real subagent or equivalent isolated subtask tool before completion and record its receipt. Respect packet dependencies; for mutation work covered by the independent-review rule, the mandatory `quality-engineer` subagent runs after the relevant implementation and tests and may satisfy the L2 dispatch requirement. If delegation is unavailable, announce the degradation before same-agent execution and preserve the unavailable reason in every affected packet.
+During an L2 task, dispatch at least one L1 packet through a real subagent or equivalent isolated subtask tool before completion and record its receipt. Real-subagent dispatch is the default: mainstream tools provide native isolated-context subagents and cheap tiers make it affordable (see `rules/role-boundaries.md` and `references/model-capabilities-2026.md`). Respect packet dependencies; for mutation work covered by the independent-review rule, the mandatory `quality-engineer` subagent runs after the relevant implementation and tests and may satisfy the L2 dispatch requirement. If delegation is genuinely unavailable in the runtime, announce the degradation before same-agent execution, preserve the unavailable reason in every affected packet, and record the environment constraint in the quality ledger.
 
 Do not dispatch an additional packet merely to increase agent count. Add a
 second subagent only when it owns a distinct decision, non-overlapping
