@@ -71,13 +71,13 @@ DOCTOR_CURRENT_SNAPSHOTS=0
 [ -d "$DOCTOR_BASE_PATH/knowledge" ] && DOCTOR_KNOWLEDGE=1
 [ -d "$DOCTOR_BASE_PATH/ledger" ] && DOCTOR_LEDGER=1
 if [ "$DOCTOR_KNOWLEDGE" -eq 1 ]; then
-  DOCTOR_STALE_SNAPSHOTS="$( (rg -l '^knowledge_status: stale$' "$DOCTOR_BASE_PATH/knowledge"/*.md 2>/dev/null || true) | wc -l | tr -d ' ')"
-  DOCTOR_CURRENT_SNAPSHOTS="$( (rg -l '^knowledge_status: current$' "$DOCTOR_BASE_PATH/knowledge"/*.md 2>/dev/null || true) | wc -l | tr -d ' ')"
+  DOCTOR_STALE_SNAPSHOTS="$( (grep -rl '^knowledge_status: stale$' "$DOCTOR_BASE_PATH"/knowledge/*.md 2>/dev/null || true) | wc -l | tr -d ' ')"
+  DOCTOR_CURRENT_SNAPSHOTS="$( (grep -rl '^knowledge_status: current$' "$DOCTOR_BASE_PATH"/knowledge/*.md 2>/dev/null || true) | wc -l | tr -d ' ')"
 fi
 
-if rg -l "check-doc-sync\.sh.*--hook-commit|--hook-commit.*check-doc-sync\.sh" \
+if [ -n "$(grep -rlE "check-doc-sync\.sh.*(--hook-commit|--staged)|(--hook-commit|--staged).*check-doc-sync\.sh" \
   "$DOCTOR_ROOT/.claude" "$DOCTOR_ROOT/.codex" "$DOCTOR_ROOT/.cursor" \
-  "$DOCTOR_ROOT/AGENTS.md" "$DOCTOR_ROOT/CLAUDE.md" >/dev/null 2>&1; then
+  "$DOCTOR_ROOT/.githooks" "$DOCTOR_ROOT/AGENTS.md" "$DOCTOR_ROOT/CLAUDE.md" 2>/dev/null || true)" ]; then
   DOCTOR_HOOK_HINT=1
 fi
 

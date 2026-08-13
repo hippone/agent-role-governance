@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# commit-msg — repo-tracked git hook (activated via `git config core.hooksPath .githooks`).
+#
+# Runs the doc-ownership gate on every commit path — terminal commits, IDEs,
+# and agent sessions alike. The skill is self-bootstrapped at the repo root,
+# so the checker runs with ROLE_GOVERNANCE_DIR=. (in-repository mode).
+#
+# [docs-na] waives only the owned-doc update check. [knowledge-na] additionally
+# waives role knowledge only for the controlled single-feature lane.
+
+set -euo pipefail
+
+MSG_FILE="${1:-}"
+DOCS_NA=0
+KNOWLEDGE_NA=0
+if [ -n "$MSG_FILE" ] && grep -qF '[docs-na]' "$MSG_FILE" 2>/dev/null; then
+  DOCS_NA=1
+fi
+if [ -n "$MSG_FILE" ] && grep -qF '[knowledge-na]' "$MSG_FILE" 2>/dev/null; then
+  KNOWLEDGE_NA=1
+fi
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+if [ -z "$ROOT" ]; then
+  exit 0
+fi
+CHECK="$ROOT/scripts/check-doc-sync.sh"
+if [ ! -f "$CHECK" ]; then
+  exit 0
+fi
+
+if ! ROLE_GOVERNANCE_DIR=. DOC_SYNC_DOCS_NA="$DOCS_NA" DOC_SYNC_KNOWLEDGE_NA="$KNOWLEDGE_NA" bash "$CHECK" --staged; then
+  {
+    echo ""
+    echo "Commit blocked: staged changes violate documentation or role-knowledge ownership."
+    echo "Ownership map: doc-ownership.yaml"
+    echo "[docs-na] waives docs; [knowledge-na] also requires [docs-na] and one feature surface."
+  } >&2
+  exit 1
+fi
