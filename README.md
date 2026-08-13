@@ -15,6 +15,16 @@ and how durable per-role knowledge stays in sync with code changes.
   L2 coordinators decompose ambiguous or cross-surface work into bounded L1
   packets with a real subagent per packet — same-agent role switching is an
   explicit, recorded degradation, never silent "delegation".
+- **Automatic role identification.** `references/role-matcher.md` defines a
+  three-tier matching protocol (hard signals -> request shape -> gate
+  recheck); `scripts/select-role.sh` executes it with confidence scores and a
+  self-test table. Roles are matched, not guessed.
+- **Self-maintaining role knowledge.** Each role follows
+  `workflows/role-self-maintenance.md`: it audits its snapshot before work,
+  fetches what it needs from canonical sources during work, and updates its
+  own snapshot after work — `scripts/role-snapshot-audit.sh` finds snapshots
+  whose owners' code moved without an update, so staleness is caught
+  proactively instead of at commit time.
 - **L1 Direct Gate.** A checklist, not vibes. If any condition fails, the task
   must go through an L2 coordinator, even when the diff is small.
 - **C0-C4 context depth.** Explicit disclosure slices per packet: C0 request,
@@ -39,12 +49,17 @@ rules/role-boundaries.md        authority model, L1/L2 gates, C0-C4, R0-R3,
                                 subagent execution requirements, knowledge duty
 references/role-catalog.md      8 L1 + 3 L2 roles with decision scope and
                                 routine context limits
+references/role-matcher.md      deterministic role identification protocol
 workflows/requirement-triage.md request envelope -> owner resolution ->
-                                L1/L2 selection -> task packet contract
+                                role matching -> task packet contract
+workflows/role-self-maintenance.md
+                                per-role self-audit / self-fetch / self-update
 workflows/update-role-knowledge.md
-                                refresh knowledge snapshots after changes
+                                manual snapshot refresh (legacy lane)
 knowledge/*.md                  11 role snapshot templates (ship empty)
 scripts/check-doc-sync.sh       deterministic doc/knowledge sync gate
+scripts/select-role.sh          executable role matcher with self-test
+scripts/role-snapshot-audit.sh  expired-snapshot sweep
 templates/doc-ownership.example.yaml
                                 example ownership manifest; copy and adapt
 ```
@@ -88,8 +103,10 @@ installations skip the gate silently.
    the example's `skills/project-rules/...` governance globs match the default
    install location — adjust the prefix if you install elsewhere. Every catalog
    role must appear in at least one owner.
-2. Optional: add `references/system-map.md` if you want the gate to require
-   registering new pages/contexts/backend modules.
+2. Optional: add `references/system-map.md` and a `system_map_checks` section
+   in `doc-ownership.yaml` to require registering new files/modules (see the
+   template header for the schema). The checker skips these checks entirely
+   when the system map file does not exist.
 3. Run from the repository root:
 
    ```bash

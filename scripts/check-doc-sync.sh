@@ -626,50 +626,77 @@ for path in sorted(code_set - deleted_paths):
             f"— add it to {manifest_path}"
         )
 
+def parse_system_map_checks(text):
+    checks = {"require": [], "warn": [], "modules": []}
+    in_section = False
+    subkey = None
+    for raw in text.splitlines():
+        stripped = raw.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if not raw.startswith(" "):
+            if stripped == "system_map_checks:":
+                in_section = True
+                subkey = None
+            else:
+                in_section = False
+            continue
+        if not in_section:
+            continue
+        if raw.startswith("  ") and not raw.startswith("    ") and stripped.endswith(":"):
+            subkey = stripped[:-1]
+            continue
+        if raw.startswith("    - ") and subkey in checks:
+            checks[subkey].append(stripped[3:].strip())
+    return checks
+
+
 if system_map_text:
-    smap_module_tokens = re.findall(
-        r"backend/src/modules/[^\s`,)]+", system_map_text
-    )
+    smap_checks = parse_system_map_checks(manifest_text or "")
+    smap_module_tokens = {
+        module_root: re.findall(
+            re.escape(module_root.rstrip("/") + "/") + r"[^\s`,)]+",
+            system_map_text,
+        )
+        for module_root in smap_checks["modules"]
+    }
     for path in sorted(new_files):
         if is_test(path):
             continue
         name = PurePosixPath(path).stem
-        if fnmatch.fnmatchcase(path, "src/pages/*.tsx") and name not in system_map_text:
-            violations.append(
-                f"new page not registered in references/system-map.md: {path}"
-            )
-        elif fnmatch.fnmatchcase(path, "src/contexts/*.tsx") and name not in system_map_text:
-            violations.append(
-                f"new context not registered in references/system-map.md: {path}"
-            )
-        elif fnmatch.fnmatchcase(path, "src/lib/*.ts") and name not in system_map_text:
-            warnings.append(
-                f"new lib file not named in references/system-map.md: {path}"
-                " (register it if it owns a surface, state, or client)"
-            )
-        elif fnmatch.fnmatchcase(path, "src/components/[A-Z]*.tsx") and name not in system_map_text:
-            warnings.append(
-                f"new top-level component not named in references/system-map.md: {path}"
-            )
+        for pattern in smap_checks["require"]:
+            if fnmatch.fnmatchcase(path, pattern) and name not in system_map_text:
+                violations.append(
+                    f"new file not registered in references/system-map.md: {path}"
+                )
+        for pattern in smap_checks["warn"]:
+            if fnmatch.fnmatchcase(path, pattern) and name not in system_map_text:
+                warnings.append(
+                    f"new file not named in references/system-map.md: {path}"
+                    " (register it if it owns a surface, state, or client)"
+                )
 
-    new_module_dirs = {
-        path.split("/")[3]
-        for path in new_files
-        if path.startswith("backend/src/modules/")
-        and len(path.split("/")) > 4
-        and not is_test(path)
-    }
-    for module in sorted(new_module_dirs):
-        module_path = f"backend/src/modules/{module}/"
-        if not any(
-            fnmatch.fnmatchcase(module_path, token)
-            or fnmatch.fnmatchcase(module_path, token + "*")
-            for token in smap_module_tokens
-        ):
-            violations.append(
-                f"new backend module not registered in references/system-map.md: "
-                f"{module_path}"
-            )
+    for module_root in smap_checks["modules"]:
+        prefix = module_root.rstrip("/") + "/"
+        depth = len(prefix.split("/"))
+        new_module_dirs = {
+            path.split("/")[depth - 1]
+            for path in new_files
+            if path.startswith(prefix)
+            and len(path.split("/")) > depth
+            and not is_test(path)
+        }
+        for module in sorted(new_module_dirs):
+            module_path = prefix + module + "/"
+            if not any(
+                fnmatch.fnmatchcase(module_path, token)
+                or fnmatch.fnmatchcase(module_path, token + "*")
+                for token in smap_module_tokens.get(module_root, [])
+            ):
+                violations.append(
+                    f"new module not registered in references/system-map.md: "
+                    f"{module_path}"
+                )
 
 if not (violations or warnings or notes):
     print("doc-sync: clean")

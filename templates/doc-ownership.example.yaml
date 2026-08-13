@@ -36,13 +36,30 @@
 #     owner's `knowledge_roles`.
 #
 # Unowned-code checks: `unowned_code_roots` (top level) lists roots where
-# unowned non-test changes block. Omit or empty to disable. The optional
-# `references/system-map.md` registers new pages/contexts/modules; the checker
-# skips those checks when the file does not exist.
+# unowned non-test changes block. Omit or empty to disable.
+#
+# System-map registration checks (optional, requires `references/system-map.md`):
+#   - `system_map_checks.require`: globs whose new files must have their file
+#     stem named in the system map (violation).
+#   - `system_map_checks.warn`: globs whose new files should be named there
+#     (warning only).
+#   - `system_map_checks.modules`: directory roots whose new immediate
+#     subdirectories must be registered (violation, matched by prefix globs).
+# All globs are repository-root-relative; adapt the examples to your stack.
 
 unowned_code_roots:
   - src/
   - backend/src/
+
+system_map_checks:
+  require:
+    - "src/pages/*.tsx"
+    - "src/contexts/*.tsx"
+  warn:
+    - "src/lib/*.ts"
+    - "src/components/*.tsx"
+  modules:
+    - "backend/src/modules"
 
 owners:
   # --- Product feature surfaces ---

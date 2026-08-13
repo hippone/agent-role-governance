@@ -28,12 +28,24 @@ Do not create a new workflow-state directory. Persist the envelope only when the
 
 ## 3. Choose L1 Or L2
 
-Apply the L1 Direct Gate in `rules/role-boundaries.md`.
+Identify the routing role first, then apply the L1 Direct Gate in
+`rules/role-boundaries.md`:
+
+1. Run the matcher: `references/role-matcher.md` for the protocol, or
+   `bash scripts/select-role.sh < request.txt` for the executable table
+   (`--self-test` after edits).
+2. Reconcile the matcher output against the request envelope and the default
+   routing table below. The matcher narrows; the coordinator decides.
+3. Apply the L1 Direct Gate:
 
 - All conditions pass -> select one L1 role, record the compact L1 receipt below, and continue directly.
 - Any condition fails -> select exactly one L2 coordinator, let it produce bounded L1 packets, and apply the L2 subagent execution requirement in `rules/role-boundaries.md`.
 
-After selection, read `knowledge/<role-id>.md` for the active role. An L2 coordinator reads its own snapshot first, then gives each child only that child's relevant snapshot pointers; role knowledge is not permission to skip current source verification.
+After selection, the active role reads `knowledge/<role-id>.md` and follows
+`workflows/role-self-maintenance.md` (self-audit before work, self-update
+after work). An L2 coordinator reads its own snapshot first, then gives each
+child only that child's relevant snapshot pointers; role knowledge is not
+permission to skip current source verification.
 
 | Request shape | Default routing |
 |---|---|
@@ -120,12 +132,13 @@ authority, model cost, context depth, or mutation scope.
 
 - [ ] Request envelope preserves the user's goal, constraints, and authority
 - [ ] Existing route, affected surface, and owner status (`id | not_applicable | unmapped`) are named
-- [ ] L1 Direct Gate was applied; one routing role is explicit
+- [ ] Matcher ran (or its tiers were applied manually); one routing role is explicit with tier, signal, confidence
+- [ ] L1 Direct Gate was applied; the chosen role survives it or was promoted
 - [ ] L1 used the compact receipt, or every L2 child received minimum sufficient context and a complete packet
 - [ ] Every L2 task has at least one real subagent receipt, or an explicit pre-execution degradation record
 - [ ] Every subagent packet records its risk route, model/effort plan, fork strategy, and any fallback or reroute
 - [ ] Covered L2 mutation work received independent `quality-engineer` subagent review, or the missing independence is reported
 - [ ] Returned results were reconciled in dependency order
 - [ ] Implemented, tested, built, deployed, browser, payment, and provider evidence remain separate
-- [ ] Impacted snapshots were refreshed or marked stale through `workflows/update-role-knowledge.md`
+- [ ] Impacted snapshots were refreshed or marked stale through `workflows/role-self-maintenance.md`
 - [ ] The project's own workflow for the matched route was completed

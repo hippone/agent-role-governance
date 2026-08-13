@@ -25,15 +25,20 @@ is kept in sync with code changes.
 Every non-trivial task:
 
 1. Run `workflows/requirement-triage.md` first. Build the request envelope,
-   resolve owners, and apply the L1 Direct Gate.
+   resolve owners, and apply the L1 Direct Gate. Use
+   `references/role-matcher.md` (or `scripts/select-role.sh`) to identify the
+   routing role automatically instead of guessing.
 2. Read `rules/role-boundaries.md` for gates, authority, context depth, and
    risk routing. Read `references/role-catalog.md` to select a role and its
    routine context limit.
-3. L1: record a compact receipt and execute. L2: produce bounded L1 packets
-   and dispatch at least one through a real subagent.
-4. On change completion, refresh role knowledge through
-   `workflows/update-role-knowledge.md` and pass `scripts/check-doc-sync.sh`
-   before closing or committing.
+3. The selected role follows `workflows/role-self-maintenance.md`: self-audit
+   its snapshot before work, self-fetch from canonical sources during work,
+   self-update its snapshot after work. L1: record a compact receipt and
+   execute. L2: produce bounded L1 packets and dispatch at least one through a
+   real subagent.
+4. On change completion, run the deterministic gate
+   (`scripts/check-doc-sync.sh`) before closing or committing, and sweep for
+   expired snapshots (`scripts/role-snapshot-audit.sh`).
 
 ## File Map
 
@@ -41,10 +46,14 @@ Every non-trivial task:
 |---|---|
 | `rules/role-boundaries.md` | Authority model, L1/L2 gates, C0-C4 context depth, R0-R3 subagent risk routing, knowledge duty, completion boundary |
 | `references/role-catalog.md` | 8 L1 + 3 L2 functional roles with decision scope and routine context limits |
+| `references/role-matcher.md` | Deterministic role identification: T1 hard signals, T2 request shape, T3 gate recheck |
 | `workflows/requirement-triage.md` | Pre-step: request envelope, owner resolution, L1/L2 selection, L2 task packet contract |
+| `workflows/role-self-maintenance.md` | Roles self-audit / self-fetch / self-update their knowledge snapshots |
 | `workflows/update-role-knowledge.md` | Refresh `knowledge/<role-id>.md` snapshots when code/contracts/evidence change |
 | `knowledge/*.md` | Derived per-role knowledge snapshots (templates ship empty) |
 | `scripts/check-doc-sync.sh` | Deterministic commit gate over `doc-ownership.yaml` |
+| `scripts/select-role.sh` | Executable role matcher with a self-test table |
+| `scripts/role-snapshot-audit.sh` | Finds snapshots whose owners' code moved without an update |
 | `templates/doc-ownership.example.yaml` | Example ownership manifest: code globs, owned docs, eligible knowledge roles |
 
 ## Rule Priority
