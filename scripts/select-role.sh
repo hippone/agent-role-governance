@@ -78,14 +78,14 @@ explicit_design_only = true_field("design_only")
 explicit_release_authorized = true_field("release_authorized")
 
 docs_only = explicit_docs_only or has(
-    r"\b(?:docs?|documentation|wording|release notes?|policy)\b.{0,24}\b(?:only|仅|只)\b",
-    r"\b(?:only|仅|只)\b.{0,24}\b(?:docs?|documentation|wording|release notes?)\b",
+    r"\b(?:docs?|documentation|wording|release notes?|policy|readme)\b.{0,24}\b(?:only|仅|只)\b",
+    r"\b(?:only|仅|只)\b.{0,24}\b(?:docs?|documentation|wording|release notes?|readme)\b",
     r"(?:仅|只)(?:修改|更新|审查)?.{0,12}(?:文档|文案|措辞|说明)",
     r"(?:文档|文案|措辞|说明).{0,12}(?:而已|即可|仅|只)",
 )
 presentation_only = docs_only or has(
-    r"\b(?:typo|copy|heading|label|comment|css|style|design tokens?)\b",
-    r"(?:错别字|文案|标题|标签|注释|样式|设计令牌)",
+    r"\b(?:typo|copy|heading|label|comment|css|style|design tokens?|colou?r|font|icon)\b",
+    r"(?:错别字|文案|标题|标签|注释|样式|设计令牌|颜色|配色|字体|字号|图标)",
 )
 negated_release = has(
     r"\b(?:do not|don't|dont|never|no)\s+(?:deploy|release|rollout)\b",
@@ -96,8 +96,8 @@ negated_mutation = has(
     r"(?:不要|不|禁止|无需)(?:实现|新增|添加|修改|更新|迁移|删除|修复|写入)",
 )
 implementation_action = has(
-    r"\b(?:implement|add|change|update|modify|migrate|remove|delete|fix|wire|create)\b",
-    r"(?:实现|新增|添加|修改|更新|迁移|删除|修复|接入|创建)",
+    r"\b(?:implement|add|change|update|modify|migrate|remove|delete|fix|wire|create|refactor|rework|rewrite|rename|restructure|redesign|overhaul|harden)\b",
+    r"(?:实现|新增|添加|修改|更新|迁移|删除|修复|接入|创建|重构|重写|重命名|调整|优化|改成|改为|换成)",
 ) and not presentation_only and not negated_mutation
 diagnosis_only = explicit_diagnosis_only or (
     has(r"\b(?:diagnos|verify|review|reproduce|test matrix|go/no-go)\w*\b", r"(?:诊断|验证|复现|排查|审查)")
@@ -108,6 +108,7 @@ design_only = explicit_design_only or has(
     r"(?:仅设计|只设计|没有消费者|不改消费者)",
 )
 
+contract_term = False
 contract_impact = any(
     true_field(field)
     for field in (
@@ -118,7 +119,7 @@ contract_impact = any(
 if mode != "envelope":
     contract_term = has(
         r"\b(?:public api|api schema|shared type|state machine|dtos?|contract|schema|authentication|authorization|auth|billing|payment|refund|privacy|identity|entitlement|login)\b",
-        r"(?:公开\s*api|接口契约|共享类型|状态机|数据结构|鉴权|认证|计费|支付|退款|隐私|身份|登录)",
+        r"(?:公开\s*api|接口契约|共享类型|状态机|数据结构|表结构|数据表|鉴权|认证|计费|支付|退款|结算|对账|订阅|隐私|身份|登录)",
     )
     contract_impact = contract_term and implementation_action and not design_only
 
@@ -172,6 +173,16 @@ if production_risk:
     result("incident-coordinator", "T1", "high", "production, data-loss, or unstable-root-cause signal")
 if contract_impact:
     result("contract-coordinator", "T1", "high", "public/shared contract or protected-domain change")
+# Text-mode failsafe: a protected-domain term whose action verb the matcher
+# does not recognize must still land on a coordinator, never fall through to
+# an L1 candidate. Envelope mode carries semantic impact fields instead.
+if contract_term and not (
+    presentation_only or diagnosis_only or design_only or negated_mutation
+):
+    result(
+        "contract-coordinator", "T1", "medium",
+        "protected-domain term without a recognized action; coordinate rather than guess L1",
+    )
 if ambiguous or multi_role:
     result("change-coordinator", "T1", "high", "ambiguity, unmapped owner, or multi-role scope")
 if request_type == "release" or has(r"\b(?:release|deploy|rollout)\b", r"(?:发布|部署|上线)"):
@@ -212,13 +223,13 @@ if diagnosis_only or request_type in {"diagnosis", "verification"}:
     add_candidate("quality-engineer", "high", "diagnosis or verification-only signal")
 if not diagnosis_only and not requirement_shape and not interaction_design_shape:
     if "frontend-engineer" in functional_roles or has(
-        r"\b(?:frontend|page|component|ui|client state|component test|dashboard|css|copy|heading|label)\b",
-        r"(?:前端|页面|组件|界面|客户端|仪表盘|样式|文案|标题|标签|错别字)",
+        r"\b(?:frontend|page|component|ui|client state|component test|dashboard|css|copy|heading|label|button|modal|layout)\b",
+        r"(?:前端|页面|组件|界面|客户端|仪表盘|样式|文案|标题|标签|错别字|按钮|弹窗|表单|输入框|图标|布局|导航|首页)",
     ):
         add_candidate("frontend-engineer", "medium", "frontend-shape signal")
     if "backend-engineer" in functional_roles or has(
         r"\b(?:backend|service|persistence|repository|server)\b",
-        r"(?:后端|服务端|持久化|仓储层)",
+        r"(?:后端|服务端|持久化|仓储层|数据库|缓存|队列|定时任务)",
     ):
         add_candidate("backend-engineer", "medium", "backend-shape signal")
 if request_type == "contract" and design_only:
@@ -281,8 +292,17 @@ self_test() {
     "privacy policy wording only|docs-governor"
     "fix the payment page heading typo|frontend-engineer"
     "update CSS schema design tokens|frontend-engineer"
+    "update the README only|docs-governor"
     "intermittent flaky unit test|quality-engineer"
     "do not deploy; only review the release notes|docs-governor"
+    "refactor the auth token refresh implementation|contract-coordinator"
+    "refactor the auth login page component|contract-coordinator"
+    "the billing amount drifts after retry, cause unknown|contract-coordinator"
+    "帮我把首页按钮改成蓝色|frontend-engineer"
+    "调整鉴权令牌的刷新逻辑|contract-coordinator"
+    "更新数据库索引和缓存逻辑|backend-engineer"
+    "重构支付对账任务|contract-coordinator"
+    "修改数据库表结构|contract-coordinator"
     "诊断后端回归问题，不要修改代码|quality-engineer"
     "修改公开 API schema 和鉴权逻辑|contract-coordinator"
     "修一下结算页面的错别字|frontend-engineer"

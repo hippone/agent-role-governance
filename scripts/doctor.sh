@@ -75,10 +75,28 @@ if [ "$DOCTOR_KNOWLEDGE" -eq 1 ]; then
   DOCTOR_CURRENT_SNAPSHOTS="$( (grep -rl '^knowledge_status: current$' "$DOCTOR_BASE_PATH"/knowledge/*.md 2>/dev/null || true) | wc -l | tr -d ' ')"
 fi
 
-if [ -n "$(grep -rlE "check-doc-sync\.sh.*(--hook-commit|--staged)|(--hook-commit|--staged).*check-doc-sync\.sh" \
+DOCTOR_GATE_RE='check-doc-sync\.sh.*(--hook-commit|--staged)|(--hook-commit|--staged).*check-doc-sync\.sh'
+DOCTOR_INERT_GITHOOKS=0
+# Agent-config wiring is auto-loaded by its tool, so file presence counts.
+if [ -n "$(grep -rlE "$DOCTOR_GATE_RE" \
   "$DOCTOR_ROOT/.claude" "$DOCTOR_ROOT/.codex" "$DOCTOR_ROOT/.cursor" \
-  "$DOCTOR_ROOT/.githooks" "$DOCTOR_ROOT/AGENTS.md" "$DOCTOR_ROOT/CLAUDE.md" 2>/dev/null || true)" ]; then
+  "$DOCTOR_ROOT/AGENTS.md" "$DOCTOR_ROOT/CLAUDE.md" 2>/dev/null || true)" ]; then
   DOCTOR_HOOK_HINT=1
+fi
+# Git hooks count only when git actually resolves them: the directory that
+# `git rev-parse --git-path hooks` returns (which honors core.hooksPath) must
+# contain a hook referencing the checker. A .githooks directory that git does
+# not resolve is inert. Hook scripts spread path and flags across lines, so
+# this match is on the script name alone.
+DOCTOR_HOOKS_DIR="$(git -C "$DOCTOR_ROOT" rev-parse --git-path hooks 2>/dev/null || true)"
+case "$DOCTOR_HOOKS_DIR" in
+  ""|/*) : ;;
+  *) DOCTOR_HOOKS_DIR="$DOCTOR_ROOT/$DOCTOR_HOOKS_DIR" ;;
+esac
+if [ -n "$DOCTOR_HOOKS_DIR" ] && [ -n "$(grep -rl 'check-doc-sync\.sh' "$DOCTOR_HOOKS_DIR" 2>/dev/null || true)" ]; then
+  DOCTOR_HOOK_HINT=1
+elif [ -n "$(grep -rl 'check-doc-sync\.sh' "$DOCTOR_ROOT/.githooks" 2>/dev/null || true)" ]; then
+  DOCTOR_INERT_GITHOOKS=1
 fi
 
 DOCTOR_STATUS="ready"
@@ -95,8 +113,11 @@ if [ "$DOCTOR_CATALOG" -ne 1 ] || [ "$DOCTOR_KNOWLEDGE" -ne 1 ]; then
   DOCTOR_STATUS="not-ready"
   DOCTOR_PROBLEMS+=("catalog or knowledge directory is missing")
 fi
+if [ "$DOCTOR_INERT_GITHOOKS" -eq 1 ]; then
+  DOCTOR_PROBLEMS+=(".githooks contains the doc-sync gate but git does not resolve it; run: git config core.hooksPath .githooks")
+fi
 if [ "$DOCTOR_HOOK_HINT" -ne 1 ]; then
-  DOCTOR_PROBLEMS+=("commit-hook wiring was not detected; verify host configuration manually")
+  DOCTOR_PROBLEMS+=("no active commit-hook wiring detected; verify host configuration manually")
 fi
 if [ "$DOCTOR_STALE_SNAPSHOTS" -gt 0 ]; then
   DOCTOR_PROBLEMS+=("$DOCTOR_STALE_SNAPSHOTS knowledge snapshot(s) are stale or uninitialized")
@@ -109,6 +130,7 @@ if [ "$DOCTOR_JSON" -eq 1 ]; then
   python3 - "$DOCTOR_STATUS" "$DOCTOR_ROOT" "$DOCTOR_MODE" "$DOCTOR_BASE_DIR" \
     "$DOCTOR_MANIFEST" "$DOCTOR_CATALOG" "$DOCTOR_KNOWLEDGE" "$DOCTOR_LEDGER" \
     "$DOCTOR_HOOK_HINT" "$DOCTOR_STALE_SNAPSHOTS" "$DOCTOR_CURRENT_SNAPSHOTS" \
+    "$DOCTOR_INERT_GITHOOKS" \
     "${DOCTOR_PROBLEMS[@]}" <<'PY'
 import json
 import sys
@@ -122,10 +144,11 @@ print(json.dumps({
     "catalog": sys.argv[6] == "1",
     "knowledge": sys.argv[7] == "1",
     "ledger": sys.argv[8] == "1",
-    "hook_hint_detected": sys.argv[9] == "1",
+    "hook_wiring_active": sys.argv[9] == "1",
+    "inert_githooks": sys.argv[12] == "1",
     "stale_snapshots": int(sys.argv[10]),
     "current_snapshots": int(sys.argv[11]),
-    "problems": sys.argv[12:],
+    "problems": sys.argv[13:],
 }, ensure_ascii=False, indent=2))
 PY
 else
@@ -136,7 +159,7 @@ else
   echo "  manifest: $([ "$DOCTOR_MANIFEST" -eq 1 ] && echo present || echo missing)"
   echo "  catalog/knowledge: $([ "$DOCTOR_CATALOG" -eq 1 ] && [ "$DOCTOR_KNOWLEDGE" -eq 1 ] && echo present || echo missing)"
   echo "  ledger: $([ "$DOCTOR_LEDGER" -eq 1 ] && echo present || echo no-data)"
-  echo "  hook hint: $([ "$DOCTOR_HOOK_HINT" -eq 1 ] && echo detected || echo not-detected)"
+  echo "  hook wiring: $([ "$DOCTOR_HOOK_HINT" -eq 1 ] && echo active || { [ "$DOCTOR_INERT_GITHOOKS" -eq 1 ] && echo inert || echo not-detected; })"
   echo "  snapshots: current=$DOCTOR_CURRENT_SNAPSHOTS stale=$DOCTOR_STALE_SNAPSHOTS"
   for doctor_problem in "${DOCTOR_PROBLEMS[@]}"; do
     echo "  problem: $doctor_problem"

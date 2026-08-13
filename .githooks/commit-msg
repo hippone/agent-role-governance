@@ -2,8 +2,10 @@
 # commit-msg — repo-tracked git hook (activated via `git config core.hooksPath .githooks`).
 #
 # Runs the doc-ownership gate on every commit path — terminal commits, IDEs,
-# and agent sessions alike. The skill is self-bootstrapped at the repo root,
-# so the checker runs with ROLE_GOVERNANCE_DIR=. (in-repository mode).
+# and agent sessions alike. Locates the checker in the common install
+# locations, so the same hook works for the self-bootstrapped skill repo
+# (scripts/ at the root) and for host projects that vendor the skill; the
+# checker auto-detects its repository-relative install directory.
 #
 # [docs-na] waives only the owned-doc update check. [knowledge-na] additionally
 # waives role knowledge only for the controlled single-feature lane.
@@ -24,16 +26,28 @@ ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 if [ -z "$ROOT" ]; then
   exit 0
 fi
-CHECK="$ROOT/scripts/check-doc-sync.sh"
-if [ ! -f "$CHECK" ]; then
+
+CHECK=""
+for candidate in \
+  "$ROOT/scripts/check-doc-sync.sh" \
+  "$ROOT"/skills/*/scripts/check-doc-sync.sh \
+  "$ROOT"/.agents/skills/*/scripts/check-doc-sync.sh \
+  "$ROOT"/.claude/skills/*/scripts/check-doc-sync.sh; do
+  if [ -f "$candidate" ]; then
+    CHECK="$candidate"
+    break
+  fi
+done
+if [ -z "$CHECK" ]; then
+  echo "commit-msg: role-governance checker not found in this repository; doc-sync gate skipped" >&2
   exit 0
 fi
 
-if ! ROLE_GOVERNANCE_DIR=. DOC_SYNC_DOCS_NA="$DOCS_NA" DOC_SYNC_KNOWLEDGE_NA="$KNOWLEDGE_NA" bash "$CHECK" --staged; then
+if ! DOC_SYNC_DOCS_NA="$DOCS_NA" DOC_SYNC_KNOWLEDGE_NA="$KNOWLEDGE_NA" bash "$CHECK" --staged; then
   {
     echo ""
     echo "Commit blocked: staged changes violate documentation or role-knowledge ownership."
-    echo "Ownership map: doc-ownership.yaml"
+    echo "Ownership map: $(dirname "$(dirname "$CHECK")")/doc-ownership.yaml"
     echo "[docs-na] waives docs; [knowledge-na] also requires [docs-na] and one feature surface."
   } >&2
   exit 1

@@ -144,10 +144,26 @@ missing manifest fails loudly.
      bash .agents/skills/role-governance/scripts/check-doc-sync.sh --dirty
    ```
 
-4. Optional commit hook: register `scripts/check-doc-sync.sh --hook-commit` as
-   a PreToolUse hook for `git commit` in your agent of choice. The checker
-   reads the hook's JSON input on stdin and only acts on commit commands.
-5. Verify the wiring before relying on it:
+4. Commit gate wiring — enable at least one path; a hook file that merely
+   exists does nothing:
+
+   - **Repo git hook** (covers terminal, IDE, and agent commits alike): copy
+     `.githooks/commit-msg` from the skill into a `.githooks/` directory at
+     your repository root, then activate it:
+
+     ```bash
+     git config core.hooksPath .githooks
+     ```
+
+     The hook finds the checker at the repo root or under
+     `skills/*/`, `.agents/skills/*/`, or `.claude/skills/*/` automatically.
+   - **Agent hook**: register `scripts/check-doc-sync.sh --hook-commit` as a
+     PreToolUse hook for `git commit` in your agent of choice (this
+     repository's `.claude/settings.json` is a working example). The checker
+     reads the hook's JSON input on stdin and only acts on commit commands.
+5. Verify the wiring before relying on it — doctor distinguishes active
+   wiring from inert hook files (`.githooks` present but `core.hooksPath`
+   unset reports a problem with the exact fix command):
 
    ```bash
    bash skills/role-governance/scripts/doctor.sh --strict

@@ -52,6 +52,14 @@ Evaluate in order; the first tier that produces a result wins.
 | Explicitly authorized single-boundary release | `release-engineer` L1 |
 | New unmapped surface (`unmapped`) | `change-coordinator` L2, then owner-map update |
 
+Text-mode failsafe: a protected-domain term (auth, billing, payment, privacy,
+identity, schema, shared contract) whose action verb the matcher does not
+recognize still routes to `contract-coordinator` (medium confidence) unless
+the request is docs-only, presentation-only, diagnosis-only, or design-only.
+An unparseable action in a protected domain over-escalates to a coordinator;
+it never falls through to an L1 candidate. Envelope mode does not use this
+fallback — its boolean impact fields carry the semantic answer directly.
+
 ### T2 — Request Shape (when no hard signal fired)
 
 | Request shape | Role |
@@ -105,5 +113,6 @@ mistake keyword matching for a completed L1 Direct Gate.
 ## Self-Test
 
 `bash scripts/select-role.sh --self-test` runs English, Chinese, negation,
-multi-candidate, protected-domain, release-authorization, and structured
-envelope cases against expected roles. Run it after editing matching rules.
+multi-candidate, protected-domain, noun-fallback, release-authorization, and
+structured envelope cases against expected roles. Run it after editing
+matching rules.
