@@ -46,8 +46,8 @@ context_contract: references/role-catalog.md
 
 ## Recent Deltas
 
+- 2026-08-14: README restructured for scanability (both editions): TOC, concept table with one-line meanings, condensed walkthrough, one-line layout comments; content preserved.
 - 2026-08-14: README is now bilingual — `README.zh-CN.md` carries the full Simplified Chinese translation and README links between the two editions; `doc-ownership.yaml` and the docs-governor snapshot cover the new file.
 - 2026-08-13: `UPGRADING.md` documents the three-class migration procedure (overwrite mechanism / merge host-context / keep host data), legacy-format snapshot migration path, and the optional `git subtree` sync; README links it.
-- 2026-08-13: `check-doc-sync.sh` snapshot-initialization check now accepts legacy-format `Recent Deltas` (real content without date prefixes) alongside the dated format; blank placeholders still block. This is the documented migration path for host projects with pre-existing snapshots.
 - 2026-08-13: matcher adds `readme` to the docs-only word list (`update the README only` -> `docs-governor`, 42 self-test cases); bare "update README" without an only/仅/只 qualifier still routes to the coordinator conservatively.
 - 2026-08-13: matcher gains a protected-domain noun fallback (verb-gap requests like "refactor the auth ..." now coordinate), broader bilingual verb/surface vocabulary (41 self-test cases); doctor verifies git-hook activation via `rev-parse --git-path hooks` and flags inert `.githooks` with the fix command; commit-msg hook searches vendored install paths; README documents `core.hooksPath` activation. Work uncommitted at capture time; baseline is the prior commit.
