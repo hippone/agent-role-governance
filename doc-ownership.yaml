@@ -22,6 +22,7 @@ owners:
     code:
       - SKILL.md
       - README.md
+      - README.zh-CN.md
       - doc-ownership.yaml
       - rules/**
       - workflows/**

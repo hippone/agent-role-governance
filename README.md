@@ -1,5 +1,7 @@
 # role-governance
 
+> English | [简体中文](README.zh-CN.md)
+
 A governance layer for AI coding agents: functional roles with explicit
 authority, context-depth, and risk boundaries — enforced by a deterministic
 commit gate, not vibes.
