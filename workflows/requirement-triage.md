@@ -61,6 +61,19 @@ permission to skip current source verification.
 | Task routing configuration, role definitions, or activation semantics change | `change-coordinator` L2 with `docs-governor` packet |
 | Explicitly authorized single-boundary release | `release-engineer` L1; coordinate when multiple runtime/evidence owners are required |
 
+Copy/UI routing is judged from the user's perspective, never an
+engineering-internal one: a request counts as copy/UI work when the end user
+can perceive the change (visible copy, headings, labels, button text, colors,
+fonts, icons). Status/state-feedback terms ("提示当前状态" style: empty state,
+error message, toast, tooltip, confirmation, 状态提示, 错误提示, 提示语,
+弹窗文字) are forbidden as copy/UI signals — they describe dynamic state
+feedback, not static user-facing surface, and never route a request into the
+frontend/design L1 lane on their own. Engineering-internal artifacts users
+never see (comments, internal naming, CSS variable/design-token definitions,
+component-internal structure) are not copy/UI work on their own; do not
+downgrade a request to the frontend/design L1 lane purely because it touches
+styling internals.
+
 ## 4. Record L1 Or Issue An L2 Task Packet
 
 L1 direct work uses a compact receipt in the active context; do not expand it

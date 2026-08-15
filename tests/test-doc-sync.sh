@@ -69,6 +69,39 @@ if (cd "$DOC_FIXTURE_ROOT" && bash "$LOCAL_GATE" --dirty >/dev/null 2>&1); then
   exit 1
 fi
 
+cat > "$DOC_FIXTURE_ROOT/skills/role-governance/knowledge/frontend-engineer.md" <<'MARKDOWN'
+---
+role_id: frontend-engineer
+tier: L1
+knowledge_status: stale
+captured_on: pending
+repository_baseline: pending
+evidence_scope: repository_only
+context_contract: references/role-catalog.md
+---
+
+# Role Knowledge: Frontend Engineer
+
+## Current Knowledge
+
+- _No captured facts yet. Add compact, current facts this role needs._
+
+## Source Pointers
+
+- _None yet._
+
+## Known Drift And Unknowns
+
+- _None yet._
+
+## Update Triggers
+
+- _None yet._
+
+## Recent Deltas
+
+- _None yet._
+MARKDOWN
 printf '%s\n' 'Changed behavior.' >> "$DOC_FIXTURE_ROOT/docs/architecture.md"
 printf '%s\n' '- 2026-08-13: placeholder-only update.' >> \
   "$DOC_FIXTURE_ROOT/skills/role-governance/knowledge/frontend-engineer.md"

@@ -72,6 +72,18 @@ fallback — its boolean impact fields carry the semantic answer directly.
 | Bounded API/DTO/schema/state design only, no consumers mutated | `contract-architect` L1 |
 | Reproducible bug, known single owner, no shared-contract impact | owning L1 engineer |
 
+Copy/UI classification is judged from the user's perspective, never an
+engineering-internal one: a change is copy/UI work when the end user can
+perceive it (visible copy, headings, labels, button text, colors, fonts,
+icons). Status/state-feedback terms ("提示当前状态" style: empty state, error
+message, toast, tooltip, confirmation, 状态提示, 错误提示, 提示语, 弹窗文字)
+are forbidden as copy/UI signals — they describe dynamic state feedback, not
+static user-facing surface, and never route a request into the copy/UI lane
+on their own. Engineering-internal artifacts users never see (comments,
+internal naming, CSS variable/design-token definitions, component-internal
+structure) do not qualify on their own; the surface terms the matcher treats
+as copy/UI hints are user-visible surface, not internal styling mechanics.
+
 ### T3 — L1 Direct Gate Recheck
 
 Run the candidate through the L1 Direct Gate in `rules/role-boundaries.md`.

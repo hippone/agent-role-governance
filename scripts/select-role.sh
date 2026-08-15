@@ -83,9 +83,23 @@ docs_only = explicit_docs_only or has(
     r"(?:仅|只)(?:修改|更新|审查)?.{0,12}(?:文档|文案|措辞|说明)",
     r"(?:文档|文案|措辞|说明).{0,12}(?:而已|即可|仅|只)",
 )
+# Copy/UI classification is judged from the user's perspective, not an
+# engineering-internal one: a surface change counts as presentation-only when
+# the end user can perceive it (visible copy, headings, labels, button text,
+# colors, fonts, icons, typos). Status/state-feedback terms ("提示当前状态"
+# style: empty state, error message, toast, tooltip, confirmation, 状态提示,
+# 错误提示, 提示语, 弹窗文字) are forbidden as copy/UI signals: they describe
+# dynamic state feedback, not static user-facing surface, and must not route
+# a request into the copy/UI lane on their own. Engineering-internal
+# artifacts users never see (comments, internal naming, CSS variable/design
+# token definitions, component-internal structure) are never presentation-only
+# on their own. The keywords below are surface-context hints used to keep
+# copy/UI work from being mis-escalated by protected-domain words (e.g. a
+# payment-page heading is copy work, not a billing-contract change); the
+# operative judgment stays user-visible impact, never engineering internals.
 presentation_only = docs_only or has(
-    r"\b(?:typo|copy|heading|label|comment|css|style|design tokens?|colou?r|font|icon)\b",
-    r"(?:错别字|文案|标题|标签|注释|样式|设计令牌|颜色|配色|字体|字号|图标)",
+    r"\b(?:typo|copy|heading|label|button text|colou?r|font|icon|comment|css|style|design tokens?)\b",
+    r"(?:错别字|文案|标题|标签|按钮文字|颜色|配色|字体|字号|图标|注释|样式|设计令牌)",
 )
 negated_release = has(
     r"\b(?:do not|don't|dont|never|no)\s+(?:deploy|release|rollout)\b",
@@ -223,7 +237,7 @@ if diagnosis_only or request_type in {"diagnosis", "verification"}:
     add_candidate("quality-engineer", "high", "diagnosis or verification-only signal")
 if not diagnosis_only and not requirement_shape and not interaction_design_shape:
     if "frontend-engineer" in functional_roles or has(
-        r"\b(?:frontend|page|component|ui|client state|component test|dashboard|css|copy|heading|label|button|modal|layout)\b",
+        r"\b(?:frontend|page|component|ui|client state|component test|dashboard|css|copy|heading|label|button|modal|dialog|layout|form field)\b",
         r"(?:前端|页面|组件|界面|客户端|仪表盘|样式|文案|标题|标签|错别字|按钮|弹窗|表单|输入框|图标|布局|导航|首页)",
     ):
         add_candidate("frontend-engineer", "medium", "frontend-shape signal")
@@ -306,6 +320,14 @@ self_test() {
     "诊断后端回归问题，不要修改代码|quality-engineer"
     "修改公开 API schema 和鉴权逻辑|contract-coordinator"
     "修一下结算页面的错别字|frontend-engineer"
+    "payment success page copy|frontend-engineer"
+    "update the empty state|change-coordinator"
+    "提示当前状态|change-coordinator"
+    "fix the checkout empty state message|change-coordinator"
+    "update the refund confirmation dialog text|contract-coordinator"
+    "调整支付失败提示语的措辞|contract-coordinator"
+    "把注册页面的按钮文字改成立即注册|frontend-engineer"
+    "rename an internal helper comment in the payment module|change-coordinator"
   )
   local test_case request_text expected_role actual_role
   for test_case in "${test_cases[@]}"; do
