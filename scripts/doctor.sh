@@ -131,7 +131,7 @@ if [ "$DOCTOR_JSON" -eq 1 ]; then
     "$DOCTOR_MANIFEST" "$DOCTOR_CATALOG" "$DOCTOR_KNOWLEDGE" "$DOCTOR_LEDGER" \
     "$DOCTOR_HOOK_HINT" "$DOCTOR_STALE_SNAPSHOTS" "$DOCTOR_CURRENT_SNAPSHOTS" \
     "$DOCTOR_INERT_GITHOOKS" \
-    "${DOCTOR_PROBLEMS[@]}" <<'PY'
+    ${DOCTOR_PROBLEMS[@]+"${DOCTOR_PROBLEMS[@]}"} <<'PY'
 import json
 import sys
 
@@ -161,9 +161,11 @@ else
   echo "  ledger: $([ "$DOCTOR_LEDGER" -eq 1 ] && echo present || echo no-data)"
   echo "  hook wiring: $([ "$DOCTOR_HOOK_HINT" -eq 1 ] && echo active || { [ "$DOCTOR_INERT_GITHOOKS" -eq 1 ] && echo inert || echo not-detected; })"
   echo "  snapshots: current=$DOCTOR_CURRENT_SNAPSHOTS stale=$DOCTOR_STALE_SNAPSHOTS"
-  for doctor_problem in "${DOCTOR_PROBLEMS[@]}"; do
-    echo "  problem: $doctor_problem"
-  done
+  if [ "${#DOCTOR_PROBLEMS[@]}" -gt 0 ]; then
+    for doctor_problem in "${DOCTOR_PROBLEMS[@]}"; do
+      echo "  problem: $doctor_problem"
+    done
+  fi
 fi
 
 if [ "$DOCTOR_STRICT" -eq 1 ] && [ "$DOCTOR_STATUS" = "not-ready" ]; then
