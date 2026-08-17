@@ -1,6 +1,12 @@
 # Ownership manifest for this governance-skill repository itself. Host projects
 # should copy and adapt templates/doc-ownership.example.yaml instead of reusing
 # this map: this owner describes the skill implementation, not product code.
+#
+# knowledge_roles entries come in two forms:
+#   - `role: glob` (mapped): the gate requires THIS role's snapshot when a
+#     changed file matches the glob — precise, targeted updates.
+#   - plain `role` string (catch-all): required only when no mapping matches,
+#     preserving the original owner-wide behavior.
 
 owners:
   - id: governance-skill
@@ -8,22 +14,27 @@ owners:
     label: Role-governance rules, scripts, tests, and derived role templates
     docs_required: false
     knowledge_roles:
-      - product-analyst
+      # --- mapped roles (glob-targeted) ---
+      - product-analyst: [scripts/benefit-report.sh, scripts/_gen_html.py]
+      - docs-governor: [SKILL.md, README.md, README.zh-CN.md, UPGRADING.md, doc-ownership.yaml, .gitignore, templates/**, .githooks/**]
+      - docs-governor: [scripts/check-doc-sync.sh, scripts/doctor.sh, scripts/role-snapshot-audit.sh, scripts/check-external-facts.sh, workflows/update-role-knowledge.md]
+      - change-coordinator: [rules/**, references/**, workflows/requirement-triage.md, workflows/role-self-maintenance.md, scripts/select-role.sh]
+      - quality-engineer: [workflows/quality-ledger.md, scripts/quality-ledger.sh]
+      # --- catch-all roles (no mapping matched -> one of these must update) ---
       - experience-designer
       - contract-architect
       - frontend-engineer
       - backend-engineer
-      - quality-engineer
       - release-engineer
-      - docs-governor
-      - change-coordinator
       - contract-coordinator
       - incident-coordinator
     code:
       - SKILL.md
       - README.md
       - README.zh-CN.md
+      - UPGRADING.md
       - doc-ownership.yaml
+      - .gitignore
       - rules/**
       - workflows/**
       - references/**
@@ -31,4 +42,5 @@ owners:
       - scripts/**
       - templates/**
       - tests/**
+      - .githooks/**
       - .github/**

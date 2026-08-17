@@ -22,6 +22,13 @@
 #     A stale placeholder does not satisfy the gate: the touched snapshot must
 #     carry a real captured date, repository baseline, source-backed facts, and
 #     a dated Recent Delta.
+#   - `knowledge_roles` entries may also be `role: glob` mappings (`glob` may be
+#     a comma-separated flow list, one entry per line). When a changed file
+#     matches a mapped glob, THAT role's snapshot is the one the gate requires
+#     — use mappings to make updates targeted instead of "any eligible role".
+#     Plain string entries act as the catch-all: required only when no mapping
+#     matches. Mapped globs must name files inside the owner's `code` list;
+#     otherwise they never trigger.
 #   - `docs_required: false` disables the owned-doc check for an owner. It does
 #     not disable the knowledge-snapshot requirement; only the controlled
 #     single-feature `[knowledge-na]` lane can do that.
@@ -66,13 +73,15 @@ system_map_checks:
 
 owners:
   # --- Product feature surfaces ---
+  # Mapped roles are required only when their globs match changed files;
+  # plain strings are the catch-all when nothing matches.
   - id: web-app
     kind: feature
     label: Main web application
     knowledge_roles:
-      - product-analyst
+      - product-analyst: src/pages/checkout/**
+      - frontend-engineer: [src/pages/**, src/components/**]
       - experience-designer
-      - frontend-engineer
       - quality-engineer
     code:
       - src/pages/**

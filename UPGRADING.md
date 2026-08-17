@@ -76,6 +76,9 @@ Host data files. Upstream may change the schema; migrate data, not files.
    changes a schema (manifest, snapshot, ledger), migrate the host data:
    - manifest schema: add new optional top-level keys (`unowned_code_roots`,
      `system_map_checks`); the checker ignores absent keys.
+     `knowledge_roles` entries may be `role: glob` mappings (targeted
+     requirement) or plain role strings (catch-all); both forms coexist and
+     no migration is required.
    - snapshot format: the `snapshot_is_initialized` check accepts both dated
      `Recent Deltas` (`- YYYY-MM-DD: ...`) and legacy real-content deltas
      without dates. Only blank placeholders block. Migration is optional and

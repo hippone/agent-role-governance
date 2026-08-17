@@ -2,6 +2,98 @@
 """Generate benefit-report HTML from collected JSON data."""
 import json, sys, html as H
 
+# ---------------------------------------------------------------------------
+# Horizontal comparison data: 8 systems × 10 dimensions, scored 0-3
+#   0 = None  1 = Basic  2 = Structured  3 = Enforced/Full
+#
+# Dimensions are split 5 governance + 5 execution/ecosystem to avoid
+# selection bias.  Governance dims favour this skill; execution dims
+# favour runtime frameworks.  The split is explicit so readers see
+# where each system is strong rather than seeing one inflated total.
+# ---------------------------------------------------------------------------
+CMP_DIMS = [
+    # --- governance side (this skill's home turf) ---
+    ("角色边界",   "Role Boundaries",     "Formal authority limits per role, not just persona prompts"),
+    ("上下文管控", "Context Control",      "Explicit per-role context depth limits vs give-everything"),
+    ("质量审计",   "Quality Audit Trail",  "Structured, append-only evidence vs advisory checks"),
+    ("知识维护",   "Knowledge Maintenance","Snapshot lifecycle, staleness detection, sync gates"),
+    ("委托问责",   "Delegation Receipts",  "Prove real subagent ran; mark degradation honestly"),
+    # --- execution / ecosystem side (runtime frameworks' home turf) ---
+    ("运行时执行", "Runtime Execution",    "Built-in agent runtime: spawn, schedule, retry, parallelize"),
+    ("并行编排",   "Parallel Orchestration","Fan-out, pipeline, barrier, DAG, supervisor patterns"),
+    ("端到端生成", "End-to-End Generation","Requirement → code/artifact with no manual glue"),
+    ("多模型支持", "Multi-Model Support",  "Use different LLM providers in the same workflow"),
+    ("社区与生态", "Community & Ecosystem","Plugins, integrations, third-party extensions, adoption"),
+]
+# key → (label_zh, label_en, scores[10], multi_agent_detail)
+#                          Gov dims ──────────  Exec dims ─────────
+CMP_SYSTEMS = {
+    "this": (
+        "本技能", "agent-role-governance",
+        #  边界 上下文 审计 知识 问责 | 运行时 并行 端到端 多模型 社区
+        [  3,    3,    3,   3,   3,     0,    0,   0,    1,    0],
+        "L2 任务必须通过真实 subagent 派遣至少一个 L1 包；委托收据区分真实派遣与同 agent 角色切换。"
+        "退化为 degraded-same-agent 必须声明并记录到质量账本。"
+        "自身不提供运行时——依赖宿主工具（Claude Code / opencode 等）执行 agent。",
+    ),
+    "crewai": (
+        "CrewAI", "CrewAI",
+        [  1,    1,    1,   1,   0,     3,    2,   2,    3,    3],
+        "role/goal/backstory 定义 agent，但无权限边界。"
+        "内置顺序/分层/并行三种编排模式，原生并行调度。"
+        "丰富的工具/memory/RAG 生态，LangChain 集成，社区活跃。",
+    ),
+    "autogen": (
+        "AutoGen", "AutoGen (Microsoft)",
+        [  1,    1,    1,   0,   0,     3,    3,   2,    3,    3],
+        "RoundRobin / Selector / Swarm / MagenticOne / GraphFlow 五种 team 模式。"
+        "所有 agent 共享广播上下文，GraphFlow 支持有向图。"
+        "Microsoft 生态，多 provider 支持，Docker 代码执行沙箱。",
+    ),
+    "langgraph": (
+        "LangGraph", "LangGraph",
+        [  0,    2,    0,   0,   0,     3,    3,   1,    3,    3],
+        "有向图框架：agent 是节点、边定义路由。"
+        "独立 scratchpad 隔离状态，subgraph 嵌套，持久化 checkpoint。"
+        "LangChain 生态核心，LangSmith 可观测性，Deep Agents 长任务。",
+    ),
+    "claude_native": (
+        "Claude Code 原生", "Claude Code Native",
+        [  1,    2,    1,   0,   1,     3,    3,   2,    1,    2],
+        "Agent tool（隔离上下文 subagent）、Agent Teams（共享任务列表 + P2P 消息）、"
+        "Workflow tool（JS fan-out/pipeline/adversarial verify）。"
+        "独立上下文窗口、权限、模型。Hooks 门禁。深度 3 层、并发 20。仅 Anthropic 模型。",
+    ),
+    "metagpt": (
+        "MetaGPT", "MetaGPT",
+        [  2,    2,    1,   1,   0,     2,    1,   3,    2,    2],
+        "SOP 流水线：PM→架构师→项目经理→工程师，强制交付物门禁。"
+        "Environment 发布/订阅结构化制品。一行需求→完整项目代码。"
+        "端到端代码生成能力最强，但流水线结构固定、不易定制。",
+    ),
+    "bmad": (
+        "BMAD", "BMAD Method",
+        [  2,    1,    1,   2,   0,     1,    1,   2,    2,    2],
+        "Clarify→Plan→Build & Verify 三阶段。Right-sized process 自适应规模。"
+        "持久化 brief/spec/架构文档跨会话，但主要在同一会话中切换视角。"
+        "BMad Loop 可无人值守构建整个 epic。npm 生态安装。",
+    ),
+    "swarm": (
+        "OpenAI Swarm", "OpenAI Swarm",
+        [  0,    0,    0,   0,   0,     1,    0,   0,    1,    1],
+        "极简教育框架：Agent + handoff 函数两个原语。"
+        "通过函数返回 Agent 实例实现转交，共享聊天历史。"
+        "无并行、无持久化、无质量门禁。实验性质，非生产就绪。",
+    ),
+}
+CMP_LEVEL = ["None 无", "Basic 基础", "Structured 结构化", "Full 完整"]
+CMP_CSS_LEVEL = [
+    "background:var(--c-danger-bg);color:var(--c-danger)",
+    "background:var(--c-warning-bg);color:var(--c-warning)",
+    "background:var(--c-info-bg);color:var(--c-info)",
+    "background:var(--c-success-bg);color:var(--c-success)",
+]
+
 output_path = sys.argv[1]
 timestamp = sys.argv[2]
 
@@ -114,6 +206,54 @@ def pill(ok, yes="PASS", no="FAIL"):
     c = "badge-ok" if ok else "badge-err"
     return f'<span class="badge {c}">{yes if ok else no}</span>'
 
+
+# --- comparison HTML ---
+cmp_order = ["this","crewai","autogen","langgraph","claude_native","metagpt","bmad","swarm"]
+GOV_COUNT = 5  # first 5 dims are governance, rest are execution
+
+# matrix table
+cmp_hdr = "".join(
+    f'<th class="{"cmp-hl" if k=="this" else ""}">{e(CMP_SYSTEMS[k][0])}</th>'
+    for k in cmp_order
+)
+cmp_rows = ""
+for i,(zh,en,desc) in enumerate(CMP_DIMS):
+    # separator row between governance and execution halves
+    if i == GOV_COUNT:
+        cmp_rows += '<tr><td colspan="%d" style="padding:2px 0;border:none"><hr style="border:none;border-top:2px dashed var(--c-border);margin:4px 0"></td></tr>\n' % (len(cmp_order)+1)
+    cells = ""
+    for k in cmp_order:
+        v = CMP_SYSTEMS[k][2][i]
+        hl = ' class="cmp-hl"' if k=="this" else ""
+        cells += f'<td{hl}><span class="badge" style="{CMP_CSS_LEVEL[v]}">{v}</span></td>'
+    cmp_rows += f'<tr><td title="{e(desc)}"><strong>{e(zh)}</strong><br><span style="font-size:.68rem;color:var(--c-muted)">{e(en)}</span></td>{cells}</tr>\n'
+
+# split subtotals: governance and execution
+cmp_gov_totals = ""
+cmp_exec_totals = ""
+for k in cmp_order:
+    scores = CMP_SYSTEMS[k][2]
+    g = sum(scores[:GOV_COUNT])
+    x = sum(scores[GOV_COUNT:])
+    hl = ' class="cmp-hl"' if k=="this" else ""
+    cmp_gov_totals  += f'<td{hl}><strong>{g}/{GOV_COUNT*3}</strong></td>'
+    cmp_exec_totals += f'<td{hl}><strong>{x}/{(len(CMP_DIMS)-GOV_COUNT)*3}</strong></td>'
+
+# system profile cards
+cmp_flow = ""
+for k in cmp_order:
+    zh,en,scores,detail = CMP_SYSTEMS[k]
+    hl = "border-left:3px solid var(--c-primary);" if k=="this" else "border-left:3px solid var(--c-border);"
+    g = sum(scores[:GOV_COUNT])
+    x = sum(scores[GOV_COUNT:])
+    cmp_flow += (
+        f'<div class="cmp-card" style="{hl}">'
+        f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+        f'<strong>{e(zh)}</strong>'
+        f'<span style="font-size:.72rem;font-family:var(--mono);color:var(--c-muted)">Gov {g}/{GOV_COUNT*3} · Exec {x}/{(len(CMP_DIMS)-GOV_COUNT)*3}</span>'
+        f'</div>'
+        f'<p style="font-size:.78rem;color:var(--c-muted);margin:0">{e(detail)}</p></div>\n'
+    )
 
 # --- Write HTML ---
 with open(output_path, "w", encoding="utf-8") as f:
@@ -241,6 +381,17 @@ tr:last-child td {{ border-bottom: none; }}
 
 /* Overflow */
 .scroll-x {{ overflow-x: auto; }}
+
+/* Comparison matrix */
+.cmp-table {{ font-size: .75rem; }}
+.cmp-table th {{ white-space: nowrap; font-size: .65rem; text-align: center; padding: 6px 4px; }}
+.cmp-table td {{ text-align: center; padding: 5px 4px; vertical-align: top; }}
+.cmp-table td:first-child {{ text-align: left; min-width: 100px; }}
+.cmp-hl {{ background: var(--c-primary-light) !important; }}
+.cmp-card {{ background: var(--c-surface); border: 1px solid var(--c-border);
+  border-radius: var(--radius); padding: 10px 12px; margin: 6px 0; }}
+.cmp-legend {{ display: flex; gap: 12px; flex-wrap: wrap; margin: 8px 0; font-size: .72rem; }}
+.cmp-legend span {{ display: inline-flex; align-items: center; gap: 4px; }}
 </style>
 </head>
 <body>
@@ -343,6 +494,43 @@ tr:last-child td {{ border-bottom: none; }}
 <div class="benefit"><strong>质量证据 Quality evidence</strong> — append-only ledger records GO/NO-GO with {lt} entries. Evidence, not claims. GO rate: {lgr}%</div>
 <div class="benefit"><strong>外部事实新鲜度 External fact freshness</strong> — {fm} markers tracked with 180-day expiry. {pill(ff,"ALL FRESH","STALE DETECTED")}</div>
 <div class="benefit"><strong>自我验证 Self-validation</strong> — integrated test suite covers matcher (adversarial cases), ledger schema, and doc-sync integration. {pill(tp)}</div>
+</div>
+
+<!-- Horizontal Comparison -->
+<div class="section">
+<h2>⚖️ Horizontal Comparison 横向对比</h2>
+<p style="font-size:.78rem;color:var(--c-muted);margin-bottom:8px">
+  8 systems × 10 dimensions (5 governance + 5 execution) · Score 0–3 · Subtotals split to show each system's real strengths</p>
+<div class="cmp-legend">
+  <span><span class="badge" style="{CMP_CSS_LEVEL[0]}">0</span> None 无</span>
+  <span><span class="badge" style="{CMP_CSS_LEVEL[1]}">1</span> Basic 基础</span>
+  <span><span class="badge" style="{CMP_CSS_LEVEL[2]}">2</span> Structured 结构化</span>
+  <span><span class="badge" style="{CMP_CSS_LEVEL[3]}">3</span> Full 完整</span>
+</div>
+<div class="scroll-x">
+<table class="cmp-table">
+<tr><th>Dimension 维度</th>{cmp_hdr}</tr>
+{cmp_rows}
+<tr style="border-top:2px solid var(--c-border)"><td><strong>🛡️ 治理 Gov</strong></td>{cmp_gov_totals}</tr>
+<tr><td><strong>⚡ 执行 Exec</strong></td>{cmp_exec_totals}</tr>
+</table>
+</div>
+</div>
+
+<!-- System Profiles -->
+<div class="section">
+<h2>🔍 System Profiles 系统画像</h2>
+<p style="font-size:.78rem;color:var(--c-muted);margin-bottom:10px">
+  Each system's positioning, strengths, and multi-agent approach</p>
+{cmp_flow}
+</div>
+
+<!-- Positioning -->
+<div class="section">
+<h2>📍 Positioning 定位说明</h2>
+<div class="benefit"><strong>治理层 ≠ 执行框架 Governance layer ≠ execution framework</strong> — CrewAI / AutoGen / LangGraph / Claude Code provide runtime agent execution; this skill provides governance constraints on top. They are complementary, not competitive — and each excels in its own domain.</div>
+<div class="benefit"><strong>本技能的弱项 Where this skill is weak</strong> — No built-in runtime, no parallel orchestration, no end-to-end code generation, limited multi-model support, no community ecosystem. It depends entirely on a host tool (Claude Code, opencode, etc.) for execution.</div>
+<div class="benefit"><strong>本技能的强项 Where this skill is strong</strong> — Formal role boundaries, structured context depth limits (C0-C4), delegation receipts with degradation marking, append-only quality ledger, deterministic doc-sync commit gate — mechanisms not found in any compared system.</div>
 </div>
 
 </body>

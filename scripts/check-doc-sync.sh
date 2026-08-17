@@ -10,6 +10,11 @@
 # [docs-na] waives only the owned-doc update check. [knowledge-na] additionally
 # waives role knowledge only for one feature owner and only with [docs-na].
 # Configuration, unowned-code, and registration violations always block.
+#
+# Generated artifacts (__pycache__/, *.pyc, *.pyo, .DS_Store) are excluded
+# from the change set. knowledge_roles entries may map a role to file globs
+# (`- role: glob`) so the gate requires that specific role's snapshot instead
+# of any eligible one; plain string entries remain the owner-wide catch-all.
 
 set -euo pipefail
 
@@ -264,7 +269,19 @@ def parse_owners(text):
             continue
         if raw.startswith("      - "):
             if list_key:
-                current.setdefault(list_key, []).append(stripped[2:].strip())
+                item = stripped[2:].strip()
+                if list_key == "knowledge_roles" and ":" in item:
+                    key, value = item.split(":", 1)
+                    key = key.strip()
+                    value = value.strip()
+                    if value.startswith("[") and value.endswith("]"):
+                        value = value[1:-1]
+                    globs = [g.strip() for g in value.split(",") if g.strip()]
+                    current.setdefault("knowledge_roles_map", {}).setdefault(
+                        key, []
+                    ).extend(globs)
+                else:
+                    current.setdefault(list_key, []).append(item)
             continue
         if raw.startswith("    ") and ":" in stripped:
             key, value = stripped.split(":", 1)
@@ -482,20 +499,37 @@ for owner in owners:
         violations.append(f"CONFIG: owner {owner_id} has no code patterns")
         owner["code"] = []
     roles = owner.get("knowledge_roles", [])
-    if not isinstance(roles, list) or not roles:
-        violations.append(f"CONFIG: owner {owner_id} has no knowledge_roles")
+    mapped = owner.get("knowledge_roles_map") or {}
+    if not isinstance(roles, list):
+        violations.append(f"CONFIG: owner {owner_id} knowledge_roles must be a list")
         roles = []
         owner["knowledge_roles"] = []
+    if not roles and not mapped:
+        violations.append(f"CONFIG: owner {owner_id} has no knowledge_roles")
     for role, count in sorted(Counter(roles).items()):
         if count > 1:
             violations.append(
                 f"CONFIG: owner {owner_id} repeats knowledge role: {role}"
             )
+    for role in sorted(set(roles) & set(mapped)):
+        violations.append(
+            f"CONFIG: owner {owner_id} lists role {role} both mapped and unmapped"
+        )
     for role in sorted(set(roles) - catalog_roles):
         violations.append(
             f"CONFIG: owner {owner_id} references unknown knowledge role: {role}"
         )
+    for role, globs in sorted(mapped.items()):
+        if role not in catalog_roles:
+            violations.append(
+                f"CONFIG: owner {owner_id} references unknown mapped knowledge role: {role}"
+            )
+        if not globs:
+            violations.append(
+                f"CONFIG: owner {owner_id} mapped role {role} has no globs"
+            )
     all_owner_roles.update(roles)
+    all_owner_roles.update(mapped)
     owner["_docs_required"] = parse_required_bool(owner)
     docs = owner.get("docs", [])
     if not isinstance(docs, list):
@@ -520,6 +554,25 @@ for owner in head_owners:
 
 change_set = staged if mode == "staged" else staged | unstaged | untracked
 new_files = staged_added if mode == "staged" else staged_added | untracked
+
+
+def is_generated_artifact(path):
+    parts = PurePosixPath(path).parts
+    if "__pycache__" in parts:
+        return True
+    name = parts[-1]
+    return name == ".DS_Store" or name.endswith((".pyc", ".pyo"))
+
+
+generated_artifacts = sorted(
+    path for path in (change_set | new_files) if is_generated_artifact(path)
+)
+change_set = {
+    path for path in change_set if not is_generated_artifact(path)
+}
+new_files = {
+    path for path in new_files if not is_generated_artifact(path)
+}
 
 
 def is_test(path):
@@ -556,6 +609,12 @@ def shown_paths(paths):
     return result
 
 
+if generated_artifacts:
+    notes.append(
+        "ignored generated artifacts: " + shown_paths(generated_artifacts)
+    )
+
+
 touched = []
 waived_doc_owners = []
 waived_knowledge_owners = []
@@ -588,25 +647,55 @@ for owner_set, candidate_paths in (
                     + ", ".join(owner.get("docs", []))
                 )
 
+        all_roles = roles + list(mapped)
         eligible_snapshots = [
             f"{knowledge_prefix}{role}.md"
-            for role in owner.get("knowledge_roles", [])
+            for role in all_roles
             if role in catalog_roles
         ]
         changed_snapshots = [
             path for path in eligible_snapshots if changed_post_image_exists(path)
         ]
+        changed_snapshot_roles = {
+            PurePosixPath(path).stem for path in changed_snapshots
+        }
+        mapped_hits = [
+            role
+            for role, globs in mapped.items()
+            if role in catalog_roles
+            and any(
+                matches(path, pattern) for path in hits for pattern in globs
+            )
+        ]
+        if mapped_hits or changed_snapshot_roles:
+            required_roles = set(mapped_hits) | changed_snapshot_roles
+        else:
+            catch_all = [role for role in roles if role in catalog_roles]
+            required_roles = set(catch_all) if catch_all else set(all_roles)
+            if not catch_all:
+                warnings.append(
+                    f"{owner['id']}: no knowledge_roles mapping matched "
+                    f"changed files ({shown_paths(hits)}); required all roles"
+                )
+        required_snapshots = [
+            f"{knowledge_prefix}{role}.md" for role in sorted(required_roles)
+        ]
+        required_changed = [
+            path
+            for path in changed_snapshots
+            if PurePosixPath(path).stem in required_roles
+        ]
         initialized_snapshots = [
-            path for path in changed_snapshots if snapshot_is_initialized(path)
+            path for path in required_changed if snapshot_is_initialized(path)
         ]
         knowledge_satisfied = bool(initialized_snapshots)
-        if eligible_snapshots and not knowledge_satisfied:
-            if changed_snapshots:
+        if required_snapshots and not knowledge_satisfied:
+            if required_changed:
                 violations.append(
                     f"{owner['id']}: touched knowledge snapshot is still a "
                     "placeholder or lacks captured_on, repository_baseline, "
                     "source facts, and a dated Recent Delta: "
-                    + ", ".join(changed_snapshots)
+                    + ", ".join(required_changed)
                 )
             elif knowledge_na and docs_na and owner.get("kind") == "feature":
                 waived_knowledge_owners.append(owner["id"])
@@ -615,7 +704,7 @@ for owner_set, candidate_paths in (
                     f"{owner['id']}: code changed ({shown_paths(hits)}) "
                     "but none of its eligible role knowledge snapshots touched "
                     "-> update one of: "
-                    + ", ".join(eligible_snapshots)
+                    + ", ".join(required_snapshots)
                 )
 
 feature_ids = list(
